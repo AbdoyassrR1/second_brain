@@ -5,14 +5,12 @@ from flask_bcrypt import Bcrypt
 from sqlalchemy import Column, String, Enum
 from sqlalchemy.orm import relationship
 import enum
+from app.app import bcrypt
 
 
 class UserRole(enum.Enum):
     USER = "User"
     ADMIN = "Admin"
-
-
-bcrypt = Bcrypt()
 
 
 class User(BaseModel, UserMixin):
