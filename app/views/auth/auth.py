@@ -9,6 +9,7 @@ auth = Blueprint("auth", __name__)
 
 # Registration route
 @auth.route("/register", methods=["POST"])
+@limiter.limit("5/minute")
 def register():
     # get user data
     username = request.form["username"]
@@ -46,6 +47,7 @@ def register():
 
 # Login route
 @auth.route("/login", methods=["POST"])
+@limiter.limit("5/minute")
 def login():
     # get user data
     email = request.form["email"]
