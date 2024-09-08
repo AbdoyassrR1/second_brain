@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 from app.models.base import BaseModel
 from flask_login import UserMixin
-from flask_bcrypt import Bcrypt
 from sqlalchemy import Column, String, Enum
 from sqlalchemy.orm import relationship
 import enum
