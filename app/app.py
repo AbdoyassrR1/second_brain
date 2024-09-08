@@ -1,25 +1,42 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
-from app.habits.routes import habits_bp
-from app.tasks.routes import tasks_bp
-from app.finances.routes import finances_bp
+from flask_migrate import Migrate
+from flask_login import LoginManager
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_bcrypt import Bcrypt
+
 
 db = SQLAlchemy()
+migrate = Migrate()
+login_manager = LoginManager()
+limiter = Limiter(get_remote_address, default_limits=["200 per day", "50 per hour"])
+bcrypt = Bcrypt()
 
 def create_app():
     app = Flask(__name__)
 
-    
-    # Configure the app (set database URI, secret key, etc.)
-    app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+mysqldb://root:RootPass!12@localhost/second_brain"
-    app.config['SECRET_KEY'] = 'your-secret-key'
-
-    # Initialize the database
+    # Initialize the app
     db.init_app(app)
+    migrate.init_app(app, db)
+    login_manager.init_app(app)
+    limiter.init_app(app)
+    bcrypt.init_app(app)
+
+
+    from app.models.user import User
+
+    @login_manager.user_loader
+    def load_user(user_id):
+        return User.query.get(user_id)
+
+    # import Blueprints
+    from app.views.auth.auth import auth
+    from app.views.auth.profile import profile
+
 
     # Register blueprints
-    app.register_blueprint(habits_bp, url_prefix='/habits')
-    app.register_blueprint(tasks_bp, url_prefix='/tasks')
-    app.register_blueprint(finances_bp, url_prefix='/finances')
+    app.register_blueprint(auth, url_prefix="/auth")
+    app.register_blueprint(profile, url_prefix="/profile")
 
     return app
