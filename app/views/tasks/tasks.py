@@ -58,8 +58,66 @@ def create_task():
     }), 201
 
 
-@tasks.route("/update_task", methods=["PATCH"])
+@tasks.route("/update_task/<task_id>", methods=["PATCH"])
 @login_required
-def update_task():
-    """ Update tasks for the logged in user"""
-    pass
+def update_task(task_id):
+    """Update an existing task for the logged in user"""
+    data = request.form
+
+    # Fetch the task by id and make sure the user is the owner
+    task = Task.query.filter_by(id=task_id, user_id=current_user.id).first()
+    if not task:
+        abort(404, description="Task not found or not owned by the current user")
+
+    # Allowed fields to update
+    allowed_fields = ["title", "description", "status", "priority", "category"]
+    is_updated = False
+
+    # Validate and update the fields
+    for key, value in data.items():
+        if key in allowed_fields:
+
+            if "title" in data and data["title"]:
+                task.title = value
+                is_updated = True
+            
+            elif "description" in data:
+                task.description = value
+                is_updated = True
+
+            elif "status" in data:
+                try:
+                    task.status = TaskStatus[value.upper()]
+                    is_updated = True
+                except KeyError:
+                    abort(400, description="Invalid status value")
+            
+            elif "priority" in data:
+                try:
+                    task.priority = TaskPriority[value.upper()]
+                    is_updated = True
+                except KeyError:
+                    abort(400, description="Invalid priority value")
+            
+            elif "category" in data:
+                try:
+                    task.category = TaskCategory[value.upper()]
+                    is_updated = True
+                except KeyError:
+                    abort(400, description="Invalid category value")
+
+    # If no changes were made, return an error
+    if not is_updated:
+        return jsonify({
+            "status": "error",
+            "message": "No valid fields to update or no changes made"
+        }), 400
+
+    # Commit the changes to the database
+    db.session.commit()
+
+    return jsonify({
+        "status": "success",
+        "message": "Task updated successfully",
+        "task": task.to_dict()
+    }), 200
