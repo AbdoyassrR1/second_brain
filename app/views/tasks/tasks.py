@@ -77,29 +77,32 @@ def update_task(task_id):
     for key, value in data.items():
         if key in allowed_fields:
 
-            if "title" in data and data["title"]:
+            if key == "title" and value:
+                if Task.query.filter_by(title=value, user_id=current_user.id).first():
+                    abort(409, description="this task already exists for the current user")
                 task.title = value
                 is_updated = True
-            
-            elif "description" in data:
+
+            # update the description even if the value if empty
+            elif key == "description":
                 task.description = value
                 is_updated = True
 
-            elif "status" in data:
+            elif key == "status" and value:
                 try:
                     task.status = TaskStatus[value.upper()]
                     is_updated = True
                 except KeyError:
                     abort(400, description="Invalid status value")
             
-            elif "priority" in data:
+            elif key == "priority" and value:
                 try:
                     task.priority = TaskPriority[value.upper()]
                     is_updated = True
                 except KeyError:
                     abort(400, description="Invalid priority value")
             
-            elif "category" in data:
+            elif key == "category" and value:
                 try:
                     task.category = TaskCategory[value.upper()]
                     is_updated = True
