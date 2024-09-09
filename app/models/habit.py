@@ -17,6 +17,8 @@ class Habit(BaseModel):
     title = Column(String(50), nullable=False)
     description = Column(Text)
 
+    user = relationship('User', backref="habits")
+
     def __repr__(self) -> str:
         return f"Habit: {self.title}, id: {self.id}, created_at: {self.created_at}"
 
@@ -48,7 +50,7 @@ class HabitEntry(BaseModel):
         return {
             "id": self.id,
             "habit_id": self.habit_id,
-            "status": self.status,
+            "status": self.status.value,
             "notes": self.notes,
             "created_at": self.created_at,
             "updated_at": self.updated_at
