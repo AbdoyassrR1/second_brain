@@ -21,30 +21,47 @@ def get_profile():
 def update_profile():
     updated_data = request.form
     allowed_fields = ["username", "password"]
+    is_changed = False
 
     for key, value in updated_data.items():
         if key in allowed_fields:
             if key == "username":
-                # check if this username already exists
-                if User.query.filter_by(username=updated_data[key]).first():
-                    abort(409, description="Username already exists")
+                # Check if the username is not empty
+                if not value:
+                    abort(400, description="Username cannot be empty")
                 # check the length of the username
-                if len(updated_data[key]) < 4:
+                if len(value) < 4:
                     abort(400, description="Username must be at least 4 Chars")
+                # check if this username already exists
+                if User.query.filter_by(username=value).first():
+                    abort(409, description="Username already exists")
                 setattr(current_user, key, value)
-                db.session.commit()
+                is_changed = True
+
             elif key == "password":
+                if "old_password" not in updated_data:
+                    abort(400, description="Missing old password")
+                new_password = value
+                old_password = updated_data["old_password"]
+
+                if not old_password or not new_password:
+                    abort(400, description="Both old and new passwords must be provided")
                 # check the old password
-                old_password = updated_data["old password"]
                 if not current_user.check_password(old_password):
                     abort(401, description="Incorrect old password")
-                else:
-                    new_password = updated_data[key]
-                    current_user.set_password(new_password)
-                    db.session.commit()
 
+                current_user.set_password(new_password)
+                is_changed = True
 
-    return jsonify({
-        "status": "success",
-        "message": "User Date has been updated"
-    })
+    if is_changed:
+        db.session.commit()
+        return jsonify({
+            "status": "success",
+            "message": "Profile Updated Successfully",
+            "user": current_user.to_dict()
+        }), 200
+    else:
+        return jsonify({
+            "status": "error",
+            "message": "No Changes Made"
+        }), 400
