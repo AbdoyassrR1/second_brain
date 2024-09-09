@@ -10,6 +10,7 @@ tasks = Blueprint("tasks", __name__)
 @tasks.route("/", methods=["GET"], strict_slashes=False)
 @login_required
 def get_tasks():
+    "get all tasks related to the logged in user"
     tasks = [task.to_dict() for task in current_user.tasks]
     return jsonify(tasks)
 
@@ -17,6 +18,7 @@ def get_tasks():
 @tasks.route("/create_task", methods=["POST"])
 @login_required
 def create_task():
+    "Create a new task for the logged in user"
     data = request.form
     # check if the task exists for uniqueness
     if Task.query.filter_by(title=data["title"]).first():
