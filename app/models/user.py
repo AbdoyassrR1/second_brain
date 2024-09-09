@@ -40,7 +40,6 @@ class User(BaseModel, UserMixin):
             "id": self.id,
             "username": self.username,
             "email": self.email,
-            "password": self.password,
             "role": self.role.value,
             "created_at": self.created_at,
             "updated_at": self.updated_at
