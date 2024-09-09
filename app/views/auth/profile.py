@@ -52,13 +52,13 @@ def update_profile():
 
                 current_user.set_password(new_password)
                 is_changed = True
+                logout_user()
 
     if is_changed:
         db.session.commit()
         return jsonify({
             "status": "success",
-            "message": "Profile Updated Successfully",
-            "user": current_user.to_dict()
+            "message": "Profile Updated Successfully"
         }), 200
     else:
         return jsonify({
