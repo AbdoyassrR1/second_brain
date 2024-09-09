@@ -10,7 +10,7 @@ tasks = Blueprint("tasks", __name__)
 @tasks.route("/", methods=["GET"], strict_slashes=False)
 @login_required
 def get_tasks():
-    "get all tasks related to the logged in user"
+    """get all tasks related to the logged in user"""
     tasks = [task.to_dict() for task in current_user.tasks]
     return jsonify(tasks)
 
@@ -18,11 +18,11 @@ def get_tasks():
 @tasks.route("/create_task", methods=["POST"])
 @login_required
 def create_task():
-    "Create a new task for the logged in user"
+    """Create a new task for the logged in user"""
     data = request.form
-    # check if the task exists for uniqueness
-    if Task.query.filter_by(title=data["title"]).first():
-        abort(409, description="this task already exists")
+    # check if the task exists for the current user
+    if Task.query.filter_by(title=data["title"], user_id=current_user.id).first():
+        abort(409, description="this task already exists for the current user")
 
     # Check required fields
     required_fields = ["title", "status", "priority", "category"]
@@ -36,7 +36,8 @@ def create_task():
         priority = TaskPriority[data["priority"].upper()]
         category = TaskCategory[data["category"].upper()]
     except KeyError as e:
-        abort(400, description=f"Invalid value for {str(e)}")
+        error = str(e).split("\'")[1]
+        abort(400, description=f"Invalid value for {error}")
 
     # Create new task
     new_task = Task(
@@ -55,3 +56,10 @@ def create_task():
         "message": "Task Created Successfully",
         "task": new_task.to_dict()
     }), 201
+
+
+@tasks.route("/update_task", methods=["PATCH"])
+@login_required
+def update_task():
+    """ Update tasks for the logged in user"""
+    pass
