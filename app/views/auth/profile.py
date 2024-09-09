@@ -21,7 +21,7 @@ def get_profile():
 def update_profile():
     updated_data = request.form
     allowed_fields = ["username", "password"]
-    is_changed = False
+    is_updated = False
 
     for key, value in updated_data.items():
         if key in allowed_fields:
@@ -36,7 +36,7 @@ def update_profile():
                 if User.query.filter_by(username=value).first():
                     abort(409, description="Username already exists")
                 setattr(current_user, key, value)
-                is_changed = True
+                is_updated = True
 
             elif key == "password":
                 if "old_password" not in updated_data:
@@ -51,17 +51,25 @@ def update_profile():
                     abort(401, description="Incorrect old password")
 
                 current_user.set_password(new_password)
-                is_changed = True
+                is_updated = True
                 logout_user()
 
-    if is_changed:
-        db.session.commit()
-        return jsonify({
-            "status": "success",
-            "message": "Profile Updated Successfully"
-        }), 200
-    else:
+    if not is_updated:
         return jsonify({
             "status": "error",
             "message": "No Changes Made"
         }), 400
+
+    # Commit the changes to the database
+    db.session.commit()
+
+    return jsonify({
+        "status": "success",
+        "message": "Profile Updated Successfully"
+    }), 200
+
+
+@profile.route("/delete_account", methods=["DELETE"])
+@login_required
+def delete_account():
+    pass
