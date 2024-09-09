@@ -2,7 +2,7 @@
 from flask import Blueprint, request, jsonify, abort
 from flask_login import logout_user, login_required, current_user
 from app.models.user import User
-from app.app import db, bcrypt
+from app.app import db
 
 
 profile = Blueprint("profile", __name__)
@@ -43,7 +43,7 @@ def update_profile():
                     abort(400, description="Missing old password")
                 new_password = value
                 old_password = updated_data["old_password"]
-
+                # # Check if the password and old password are not empty
                 if not old_password or not new_password:
                     abort(400, description="Both old and new passwords must be provided")
                 # check the old password
