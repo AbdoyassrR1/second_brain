@@ -25,7 +25,7 @@ class Task(BaseModel):
     __tablename__ = 'tasks'
 
     user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
-    title = Column(String(50), nullable=False)
+    title = Column(String(50), nullable=False, unique=True)
     description = Column(Text)
     status = Column(Enum(TaskStatus), nullable=False, default=TaskStatus.TODO)
     priority = Column(Enum(TaskPriority), nullable=False)
