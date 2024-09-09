@@ -13,7 +13,7 @@ class UserRole(enum.Enum):
 
 
 class User(BaseModel, UserMixin):
-    __tablename__ = 'users'
+    __tablename__ = "users"
 
     username = Column(String(50), nullable=False, unique=True)
     email = Column(String(50), nullable=False, unique=True)
@@ -21,7 +21,7 @@ class User(BaseModel, UserMixin):
     role = Column(Enum(UserRole), default=UserRole.USER.value)
 
     # Relationships (if applicable)
-    habits = relationship('Habit', backref='user')
+    habits = relationship("Habit", backref="user")
 
     def __repr__(self):
         return f"<User {self.username}, Role: {self.role}>"
@@ -37,10 +37,11 @@ class User(BaseModel, UserMixin):
     # Convert to dictionary for API response
     def to_dict(self):
         return {
-            'id': self.id,
-            'username': self.username,
-            'email': self.email,
-            'role': self.role,
-            'created_at': self.created_at,
-            'updated_at': self.updated_at
+            "id": self.id,
+            "username": self.username,
+            "email": self.email,
+            "password": self.password,
+            "role": self.role.value,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at
         }
