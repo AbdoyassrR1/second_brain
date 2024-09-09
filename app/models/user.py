@@ -2,7 +2,6 @@
 from app.models.base import BaseModel
 from flask_login import UserMixin
 from sqlalchemy import Column, String, Enum
-from sqlalchemy.orm import relationship
 import enum
 from app.app import bcrypt
 
@@ -19,9 +18,6 @@ class User(BaseModel, UserMixin):
     email = Column(String(50), nullable=False, unique=True)
     password = Column(String(128), nullable=False)
     role = Column(Enum(UserRole), default=UserRole.USER.value)
-
-    # Relationships (if applicable)
-    habits = relationship("Habit", backref="user")
 
     def __repr__(self):
         return f"<User {self.username}, Role: {self.role}>"
