@@ -23,13 +23,14 @@ class Habit(BaseModel):
         return f"Habit: {self.title}, id: {self.id}, created_at: {self.created_at}"
 
     def to_dict(self):
+        TIME = "%a, %d %b %Y %I:%M:%S %p"
         return {
             "id": self.id,
             "user_id": self.user_id,
             "title": self.title,
             "description": self.description,
-            "created_at": self.created_at,
-            "updated_at": self.updated_at
+            "created_at": self.created_at.strftime(TIME),
+            "updated_at": self.updated_at.strftime(TIME)
             }
 
 
@@ -52,6 +53,6 @@ class HabitEntry(BaseModel):
             "habit_id": self.habit_id,
             "status": self.status.value,
             "notes": self.notes,
-            "created_at": self.created_at,
-            "updated_at": self.updated_at
+            "created_at": self.created_at.strftime(TIME),
+            "updated_at": self.updated_at.strftime(TIME)
             }

@@ -32,11 +32,12 @@ class User(BaseModel, UserMixin):
 
     # Convert to dictionary for API response
     def to_dict(self):
+        TIME = "%a, %d %b %Y %I:%M:%S %p"
         return {
             "id": self.id,
             "username": self.username,
             "email": self.email,
             "role": self.role.value,
-            "created_at": self.created_at,
-            "updated_at": self.updated_at
+            "created_at": self.created_at.strftime(TIME),
+            "updated_at": self.updated_at.strftime(TIME)
         }
