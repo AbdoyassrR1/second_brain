@@ -12,6 +12,7 @@ profile = Blueprint("profile", __name__)
 @profile.route("/", strict_slashes=False)
 @login_required
 def get_profile():
+    """ get the logged in user profile """
     return jsonify(current_user.to_dict()), 200
 
 
@@ -19,6 +20,7 @@ def get_profile():
 @profile.route("/update_profile", methods=["PATCH"])
 @login_required
 def update_profile():
+    """ Update the logged in user data """
     updated_data = request.form
     allowed_fields = ["username", "password"]
     is_updated = False
@@ -72,6 +74,7 @@ def update_profile():
 @profile.route("/delete_account", methods=["DELETE"])
 @login_required
 def delete_account():
+    """ Delete the logged in user account """
     password = request.form.get("password")
 
     # confirm password before deletion for more security
