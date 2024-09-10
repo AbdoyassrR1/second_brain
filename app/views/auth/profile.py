@@ -72,4 +72,19 @@ def update_profile():
 @profile.route("/delete_account", methods=["DELETE"])
 @login_required
 def delete_account():
-    pass
+    password = request.form.get("password")
+
+    # confirm password before deletion for more security
+    if not password:
+        abort(400, description="Confirming the Password is Required")
+    if not current_user.check_password(password):
+        abort(400, description="Incorrect password")
+
+    db.session.delete(current_user)
+    db.session.commit()
+    logout_user()
+
+    return jsonify({
+        "status": "success",
+        "message": "User Account Deleted Successfully"
+    }), 200
