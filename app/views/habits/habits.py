@@ -17,7 +17,7 @@ def get_habits():
 
 @habits.route("/create_habit", methods=["POST"])
 @login_required
-def create_task():
+def create_habit():
     """Create a new habit for the logged in user"""
     data = request.form
     # check if the habit exists for the current user
@@ -93,7 +93,7 @@ def update_habit(habit_id):
 
 @habits.route("/delete_habit/<habit_id>", methods=["DELETE"])
 @login_required
-def delete_task(habit_id):
+def delete_habit(habit_id):
     """ delete habit for the logged in user """
     # Fetch the habit by id and make sure the user is the owner
     habit = Habit.query.filter_by(id=habit_id, user_id=current_user.id).first()
