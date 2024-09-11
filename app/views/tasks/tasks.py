@@ -11,7 +11,38 @@ tasks = Blueprint("tasks", __name__)
 @login_required
 def get_tasks():
     """get all tasks related to the logged in user"""
-    tasks = [task.to_dict() for task in current_user.tasks]
+    tasks = [task for task in current_user.tasks]
+
+    # handle query parameters for filtering/sorting
+    search = request.args.get("search")
+    status = request.args.get("status")
+    category = request.args.get("category")
+    priority = request.args.get("priority")
+
+    if search:
+        tasks = [task for task in Task.query.filter(Task.title.ilike(f"%{search}%")).all()]
+
+    if status:
+        try:
+            status = TaskStatus[status.upper()]
+            tasks = [task for task in tasks if task.status == status]
+        except KeyError:
+            abort(400, description="invalid status")
+
+    if category:
+        try:
+            category = TaskCategory[category.upper()]
+            tasks = [task for task in tasks if task.category == category]
+        except KeyError:
+            abort(400, description="invalid category")
+
+    if priority:
+        try:
+            priority = TaskPriority[priority.upper()]
+            tasks = [task for task in tasks if task.priority == priority]
+        except KeyError:
+            abort(400, description="invalid priority")
+    tasks = [task.to_dict() for task in tasks]
     return jsonify(tasks)
 
 
