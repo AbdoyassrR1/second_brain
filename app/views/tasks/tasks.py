@@ -11,47 +11,59 @@ tasks = Blueprint("tasks", __name__)
 @login_required
 def get_tasks():
     """get all tasks related to the logged in user"""
-    tasks = [task for task in current_user.tasks]
+    query = Task.query.filter_by(user_id=current_user.id)
 
-    # handle query parameters for filtering/sorting
+    # handle query parameters for filtering
     search = request.args.get("search")
     status = request.args.get("status")
     category = request.args.get("category")
     priority = request.args.get("priority")
-    query_parameters = False
 
     if search:
-        tasks = [task for task in Task.query.filter(Task.title.ilike(f"%{search}%")).all()]
-        query_parameters = True
+        query = query.filter(Task.title.ilike(f"%{search}%"))
 
     if status:
         try:
             status = TaskStatus[status.upper()]
-            tasks = [task for task in tasks if task.status == status]
-            query_parameters = True
+            query = query.filter_by(status=status)
         except KeyError:
             abort(400, description="invalid status")
 
     if category:
         try:
             category = TaskCategory[category.upper()]
-            tasks = [task for task in tasks if task.category == category]
-            query_parameters = True
+            query = query.filter_by(category=category)
         except KeyError:
             abort(400, description="invalid category")
 
     if priority:
         try:
             priority = TaskPriority[priority.upper()]
-            tasks = [task for task in tasks if task.priority == priority]
-            query_parameters = True
+            query = query.filter_by(priority=priority)
         except KeyError:
             abort(400, description="invalid priority")
 
-    if query_parameters and len(tasks) == 0:
+    # handle pagination
+    page = request.args.get("page", default=1, type=int)
+    per_page = request.args.get("per_page", default=10, type=int)
+    paginated_tasks = query.paginate(page=page, per_page=per_page, error_out=False)
+
+    # If no tasks were found
+    if not paginated_tasks.items:
         abort(404, description="No Tasks Found")
-    tasks = [task.to_dict() for task in tasks]
-    return jsonify(tasks)
+
+    # Convert tasks to dictionary for the response
+    tasks = [task.to_dict() for task in paginated_tasks.items]
+
+    # Return the tasks with pagination metadata
+    return jsonify({
+        'tasks': tasks,
+        'total_tasks': paginated_tasks.total,
+        'total_pages': paginated_tasks.pages,
+        'current_page': paginated_tasks.page,
+        'next_page': paginated_tasks.next_num if paginated_tasks.has_next else None,
+        'prev_page': paginated_tasks.prev_num if paginated_tasks.has_prev else None,
+    })
 
 
 @tasks.route("/create_task", methods=["POST"])
