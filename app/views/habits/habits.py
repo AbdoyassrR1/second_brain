@@ -89,3 +89,20 @@ def update_habit(habit_id):
         "message": "Habit updated successfully",
         "habit": habit.to_dict()
     }), 200
+
+
+@habits.route("/delete_habit/<habit_id>", methods=["DELETE"])
+@login_required
+def delete_task(habit_id):
+    """ delete habit for the logged in user """
+    # Fetch the habit by id and make sure the user is the owner
+    habit = Habit.query.filter_by(id=habit_id, user_id=current_user.id).first()
+    if not habit:
+        abort(404, description="Habit not found or not owned by the current user")
+    db.session.delete(habit)
+    db.session.commit()
+
+    return jsonify({
+        "status": "success",
+        "message": "Habit deleted successfully"
+    }), 200
