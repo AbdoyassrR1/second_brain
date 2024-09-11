@@ -25,6 +25,8 @@ def create_app():
 
 
     from app.models.user import User
+    from app.models.habit import Habit, HabitEntry
+    from app.models.task import Task
 
     @login_manager.user_loader
     def load_user(user_id):
@@ -33,10 +35,13 @@ def create_app():
     # import Blueprints
     from app.views.auth.auth import auth
     from app.views.auth.profile import profile
-
+    from app.views.tasks.tasks import tasks
+    from app.views.habits.habits import habits
 
     # Register blueprints
     app.register_blueprint(auth, url_prefix="/auth")
     app.register_blueprint(profile, url_prefix="/profile")
+    app.register_blueprint(tasks, url_prefix="/tasks")
+    app.register_blueprint(habits, url_prefix="/habits")
 
     return app
