@@ -45,3 +45,50 @@ def create_task():
         "message": "Habit Created Successfully",
         "habit": new_habit.to_dict()
     }), 201
+
+
+@habits.route("/update_habit/<habit_id>", methods=["PATCH"])
+@login_required
+def update_habit(habit_id):
+    """Update an existing habit for the logged in user"""
+    data = request.form
+
+    # Fetch the habit by id and make sure the user is the owner
+    habit = Habit.query.filter_by(id=habit_id, user_id=current_user.id).first()
+    if not habit:
+        abort(404, description="Habit not found or not owned by the current user")
+
+    # Allowed fields to update
+    allowed_fields = ["title", "description"]
+    is_updated = False
+
+    # Validate and update the fields
+    for key, value in data.items():
+        if key in allowed_fields:
+
+            if key == "title" and value:
+                if Habit.query.filter_by(title=value, user_id=current_user.id).first():
+                    abort(409, description="this habit already exists for the current user")
+                habit.title = value
+                is_updated = True
+
+            # update the description even if the value if empty
+            elif key == "description":
+                habit.description = value
+                is_updated = True
+
+    # If no changes were made, return an error
+    if not is_updated:
+        return jsonify({
+            "status": "error",
+            "message": "No valid fields to update or no changes made"
+        }), 400
+
+    # Commit the changes to the database
+    db.session.commit()
+
+    return jsonify({
+        "status": "success",
+        "message": "Habit updated successfully",
+        "habit": habit.to_dict()
+    }), 200
