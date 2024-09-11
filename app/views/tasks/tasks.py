@@ -124,3 +124,20 @@ def update_task(task_id):
         "message": "Task updated successfully",
         "task": task.to_dict()
     }), 200
+
+
+@tasks.route("/delete_task/<task_id>", methods=["DELETE"])
+@login_required
+def delete_task(task_id):
+    """ delete task for the logged in user """
+    # Fetch the task by id and make sure the user is the owner
+    task = Task.query.filter_by(id=task_id, user_id=current_user.id).first()
+    if not task:
+        abort(404, description="Task not found or not owned by the current user")
+    db.session.delete(task)
+    db.session.commit()
+
+    return jsonify({
+        "status": "success",
+        "message": "Task deleted successfully"
+    }), 200
