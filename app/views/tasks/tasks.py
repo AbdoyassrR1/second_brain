@@ -162,10 +162,7 @@ def update_task(task_id):
 
     # If no changes were made, return an error
     if not is_updated:
-        return jsonify({
-            "status": "error",
-            "message": "No valid fields to update or no changes made"
-        }), 400
+        abort(400, description="No valid fields to update or no changes made")
 
     # Commit the changes to the database
     db.session.commit()
