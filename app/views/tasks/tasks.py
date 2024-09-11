@@ -18,14 +18,17 @@ def get_tasks():
     status = request.args.get("status")
     category = request.args.get("category")
     priority = request.args.get("priority")
+    query_parameters = False
 
     if search:
         tasks = [task for task in Task.query.filter(Task.title.ilike(f"%{search}%")).all()]
+        query_parameters = True
 
     if status:
         try:
             status = TaskStatus[status.upper()]
             tasks = [task for task in tasks if task.status == status]
+            query_parameters = True
         except KeyError:
             abort(400, description="invalid status")
 
@@ -33,6 +36,7 @@ def get_tasks():
         try:
             category = TaskCategory[category.upper()]
             tasks = [task for task in tasks if task.category == category]
+            query_parameters = True
         except KeyError:
             abort(400, description="invalid category")
 
@@ -40,8 +44,12 @@ def get_tasks():
         try:
             priority = TaskPriority[priority.upper()]
             tasks = [task for task in tasks if task.priority == priority]
+            query_parameters = True
         except KeyError:
             abort(400, description="invalid priority")
+
+    if query_parameters and len(tasks) == 0:
+        abort(404, description="No Tasks Found")
     tasks = [task.to_dict() for task in tasks]
     return jsonify(tasks)
 
