@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 from flask import Blueprint, request, abort, jsonify
 from flask_login import current_user, login_required
-from app.models.habit import Habit, HabitEntry, HabitStatus
+from app.models.habit import Habit, HabitStatus
 from app.app import db
 
 habits = Blueprint("habits", __name__)
@@ -25,7 +25,7 @@ def create_habit():
         abort(409, description="this habit already exists for the current user")
 
     # Check required fields
-    required_fields = ["title"]
+    required_fields = ["title", "description"]
     for field in required_fields:
         if field not in data:
             abort(400, description=f"Missing {field}")
@@ -34,7 +34,7 @@ def create_habit():
     # Create new habit
     new_habit = Habit(
         title=data["title"],
-        description=data.get("description", ""),
+        description=data["description"]
     )
     new_habit.user_id = current_user.id
     db.session.add(new_habit)
