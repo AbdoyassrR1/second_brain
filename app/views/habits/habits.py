@@ -27,7 +27,7 @@ def get_habits():
         except KeyError:
             abort(400, description="invalid status")
 
-    habits = [habit.to_dict() for habit in query.all()]
+    habits = [habit.to_dict() for habit in query.order_by(Habit.created_at.desc()).all()]
     return jsonify(habits)
 
 
