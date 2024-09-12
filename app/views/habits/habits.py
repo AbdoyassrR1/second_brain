@@ -11,7 +11,23 @@ habits = Blueprint("habits", __name__)
 @login_required
 def get_habits():
     """ Get all habits related to the logged in User """
-    habits = [habit.to_dict() for habit in current_user.habits]
+    query = Habit.query.filter_by(user_id=current_user.id)
+
+    # handle query parameters for filtering
+    search = request.args.get("search")
+    status = request.args.get("status")
+
+    if search:
+        query = query.filter(Habit.title.ilike(f"%{search}%"))
+
+    if status:
+        try:
+            status = HabitStatus[status.upper()]
+            query = query.filter_by(status=status)
+        except KeyError:
+            abort(400, description="invalid status")
+
+    habits = [habit.to_dict() for habit in query.all()]
     return jsonify(habits)
 
 
