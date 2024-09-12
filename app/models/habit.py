@@ -19,7 +19,7 @@ class Habit(BaseModel):
     __tablename__ = "habits"
 
     user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
-    title = Column(String(50), nullable=False)
+    title = Column(String(40), nullable=False)
     status = Column(Enum(HabitStatus), nullable=False, default=HabitStatus.ACTIVE.value)
     description = Column(Text, nullable=False)
 
@@ -44,7 +44,7 @@ class Habit(BaseModel):
 class HabitEntry(BaseModel):
     __tablename__ = "habit_entries"
 
-    habit_id = Column(String(50), ForeignKey("habits.id"), nullable=False)
+    habit_id = Column(String(36), ForeignKey("habits.id"), nullable=False)
     notes = Column(Text)
     status = Column(Enum(HabitEntryStatus), nullable=False, default=HabitEntryStatus.IN_PROGRESS.value)
 
