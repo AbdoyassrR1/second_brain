@@ -5,6 +5,11 @@ from app.models.base import BaseModel
 
 
 class HabitStatus(enum.Enum):
+    ACTIVE = "Active"
+    COMPLETED = "Completed"
+
+
+class HabitEntryStatus(enum.Enum):
     COMPLETED = "Completed"
     IN_PROGRESS = "In Progress"
     SKIPPED = "Skipped"
@@ -15,7 +20,8 @@ class Habit(BaseModel):
 
     user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
     title = Column(String(50), nullable=False)
-    description = Column(Text)
+    status = Column(Enum(HabitStatus), nullable=False, default=HabitStatus.ACTIVE.value)
+    description = Column(Text, nullable=False)
 
     user = relationship('User', backref="habits")
 
@@ -39,7 +45,7 @@ class HabitEntry(BaseModel):
 
     habit_id = Column(String(50), ForeignKey("habits.id"), nullable=False)
     notes = Column(Text)
-    status = Column(Enum(HabitStatus), nullable=False, default=HabitStatus.IN_PROGRESS.value)
+    status = Column(Enum(HabitEntryStatus), nullable=False, default=HabitEntryStatus.IN_PROGRESS.value)
 
     habit = relationship("Habit", backref="entries")
 
