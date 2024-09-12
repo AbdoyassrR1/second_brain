@@ -59,7 +59,7 @@ def update_habit(habit_id):
         abort(404, description="Habit not found or not owned by the current user")
 
     # Allowed fields to update
-    allowed_fields = ["title", "description"]
+    allowed_fields = ["title", "description", "status"]
     is_updated = False
 
     # Validate and update the fields
@@ -72,10 +72,16 @@ def update_habit(habit_id):
                 habit.title = value
                 is_updated = True
 
-            # update the description even if the value if empty
-            elif key == "description":
+            elif key == "description" and value:
                 habit.description = value
                 is_updated = True
+
+            elif key == "status" and value:
+                try:
+                    habit.status = HabitStatus[value.upper()]
+                    is_updated = True
+                except KeyError:
+                    abort(400, description="Invalid status value")
 
     # If no changes were made, return an error
     if not is_updated:
