@@ -54,6 +54,53 @@ def create_habit_entry(habit_id):
     return jsonify({
         "status": "success",
         "message": "Habit entry added successfully",
-        "entry": new_entry.to_dict()
     }), 201
 
+
+@habit_entries.route("/update_entry/<entry_id>", methods=["PATCH"])
+@login_required
+def update_habit_entry(entry_id):
+    """Update an existing habit entry for the logged in user"""
+    data = request.form
+
+    # Fetch the entry by id 
+    entry = HabitEntry.query.filter_by(id=entry_id).first()
+    if not entry:
+        abort(404, description="entry not found")
+
+    # Fetch the habit by id 
+    habit = entry.habit
+    if not habit:
+        abort(404, description="Habit not found")
+
+    # Allowed fields to update
+    allowed_fields = ["notes", "status"]
+    is_updated = False
+
+    # Validate and update the fields
+    for key, value in data.items():
+        if key in allowed_fields:
+
+            if key == "notes" and value:
+                entry.notes = value
+                is_updated = True
+
+            elif key == "status" and value:
+                try:
+                    entry.status = HabitEntryStatus[value.upper()]
+                    is_updated = True
+                except KeyError:
+                    abort(400, description="Invalid status value")
+
+    # If no changes were made, return an error
+    if not is_updated:
+        abort(400, description="No valid fields to update or no changes made")
+
+    # Commit the changes to the database
+    db.session.commit()
+
+    return jsonify({
+        "status": "success",
+        "message": "Habit entry updated successfully",
+        "habit entry": entry.to_dict()
+    }), 200
