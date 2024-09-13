@@ -11,7 +11,6 @@ class HabitStatus(enum.Enum):
 
 class HabitEntryStatus(enum.Enum):
     COMPLETED = "Completed"
-    IN_PROGRESS = "In Progress"
     SKIPPED = "Skipped"
 
 
@@ -46,7 +45,7 @@ class HabitEntry(BaseModel):
 
     habit_id = Column(String(36), ForeignKey("habits.id"), nullable=False)
     notes = Column(Text)
-    status = Column(Enum(HabitEntryStatus), nullable=False, default=HabitEntryStatus.IN_PROGRESS.value)
+    status = Column(Enum(HabitEntryStatus))
 
     habit = relationship("Habit", backref="entries")
 
