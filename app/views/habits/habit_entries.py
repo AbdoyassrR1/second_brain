@@ -2,9 +2,13 @@
 from flask import Blueprint, request, abort, jsonify
 from flask_login import current_user, login_required
 from app.models.habit import HabitEntry, HabitEntryStatus, Habit
-from app.app import db, limiter
+from app.app import db, limiter, get_remote_address
 
 habit_entries = Blueprint("habit_entries", __name__)
+
+# Custom key function for rate-limiting based on habit and user
+def habit_rate_limit_key():
+    return f"{get_remote_address()}:{current_user.id}:{request.view_args['habit_id']}"
 
 
 @habit_entries.route("/<habit_id>", methods=["GET"])
@@ -30,14 +34,11 @@ def get_habit_entries(habit_id):
 
 
 @habit_entries.route("/add_entry/<habit_id>", methods=["POST"])
-@limiter.limit("1 per day")
+@limiter.limit("1 per day", key_func=habit_rate_limit_key)
 @login_required
 def create_habit_entry(habit_id):
+    """ Log a new entry for a habit by its id, once per day """
     data = request.form
-    """
-    Log a new entry for a habit by its id
-    you can only log once per day
-    """
     habit = Habit.query.filter_by(id=habit_id, user_id=current_user.id).first()
     if not habit:
         abort(404, description="Habit not found or not owned by the current user")
@@ -55,3 +56,4 @@ def create_habit_entry(habit_id):
         "message": "Habit entry added successfully",
         "entry": new_entry.to_dict()
     }), 201
+
