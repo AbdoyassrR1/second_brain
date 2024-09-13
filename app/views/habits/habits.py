@@ -36,8 +36,11 @@ def get_habits():
 def create_habit():
     """Create a new habit for the logged in user"""
     data = request.form
+    title = data["title"]
+    description = data["description"]
+
     # check if the habit exists for the current user
-    if Habit.query.filter_by(title=data["title"], user_id=current_user.id).first():
+    if Habit.query.filter_by(title=title, user_id=current_user.id).first():
         abort(409, description="this habit already exists for the current user")
 
     # Check required fields
@@ -45,12 +48,14 @@ def create_habit():
     for field in required_fields:
         if field not in data:
             abort(400, description=f"Missing {field}")
+    if not title or not description:
+        abort(400, description="please fill all fields")
 
 
     # Create new habit
     new_habit = Habit(
-        title=data["title"],
-        description=data["description"]
+        title=title,
+        description=description
     )
     new_habit.user_id = current_user.id
     db.session.add(new_habit)
