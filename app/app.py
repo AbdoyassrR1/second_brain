@@ -37,11 +37,14 @@ def create_app():
     from app.views.auth.profile import profile
     from app.views.tasks.tasks import tasks
     from app.views.habits.habits import habits
+    from app.views.habits.habit_entries import habit_entries
 
     # Register blueprints
     app.register_blueprint(auth, url_prefix="/auth")
     app.register_blueprint(profile, url_prefix="/profile")
     app.register_blueprint(tasks, url_prefix="/tasks")
+        # Nesting Blueprints
+    habits.register_blueprint(habit_entries, url_prefix="/habit_entries")
     app.register_blueprint(habits, url_prefix="/habits")
 
     return app
