@@ -104,3 +104,33 @@ def update_habit_entry(entry_id):
         "message": "Habit entry updated successfully",
         "habit entry": entry.to_dict()
     }), 200
+
+
+@habit_entries.route("/habit_stats/<habit_id>", methods=["GET"])
+@login_required
+def get_habit_stats(habit_id):
+    """ get habit stats such as total entries completion rate """
+    habit = Habit.query.filter_by(id=habit_id).first()
+    if not habit:
+        abort(404, description="Habit not found or not owned by the current User")
+    entries = habit.entries
+
+    # total entries
+    total_entries = len(entries)
+
+    # completed entries
+    completed_entries = HabitEntry.query.filter_by(habit_id=habit_id, status=HabitEntryStatus.COMPLETED).all()
+
+    # skipped entries
+    completed_entries = HabitEntry.query.filter_by(habit_id=habit_id, status=HabitEntryStatus.SKIPPED).all()
+
+    try:
+        completion_rate = (len(completed_entries) / total_entries) * 100
+    except ZeroDivisionError as a:
+        abort(404, description=f"No Entries Found")
+
+    return jsonify({
+        "status": "success",
+        "total entries": total_entries,
+        "completion rate": f"%{completion_rate}"
+    })
