@@ -122,15 +122,17 @@ def get_habit_stats(habit_id):
     completed_entries = HabitEntry.query.filter_by(habit_id=habit_id, status=HabitEntryStatus.COMPLETED).all()
 
     # skipped entries
-    completed_entries = HabitEntry.query.filter_by(habit_id=habit_id, status=HabitEntryStatus.SKIPPED).all()
+    skipped_entries = HabitEntry.query.filter_by(habit_id=habit_id, status=HabitEntryStatus.SKIPPED).all()
 
     try:
         completion_rate = (len(completed_entries) / total_entries) * 100
     except ZeroDivisionError as a:
-        abort(404, description=f"No Entries Found")
+        completion_rate = 0 # no entries found
 
     return jsonify({
         "status": "success",
-        "total entries": total_entries,
-        "completion rate": f"%{completion_rate}"
+        "total_entries": total_entries,
+        "completed_entries": len(completed_entries),
+        "skipped_entries": len(skipped_entries),
+        "completion_rate": f"{completion_rate:.2f}%"
     })
