@@ -18,7 +18,6 @@ def get_habit_entries(habit_id):
     habit = Habit.query.filter_by(id=habit_id, user_id=current_user.id).first()
     if not habit:
         abort(404, description="Habit not found or not owned by the current user")
-    print("debugging")
 
     # Get all entries for the habit
     entries = HabitEntry.query.filter_by(habit_id=habit.id).order_by(HabitEntry.created_at.desc()).all()
