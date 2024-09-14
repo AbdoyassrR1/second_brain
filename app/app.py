@@ -38,6 +38,7 @@ def create_app():
     from app.views.tasks.tasks import tasks
     from app.views.habits.habits import habits
     from app.views.habits.habit_entries import habit_entries
+    from app.views.finances.finances import finances
 
     # Register blueprints
     app.register_blueprint(auth, url_prefix="/auth")
@@ -46,5 +47,6 @@ def create_app():
         # Nesting Blueprints
     habits.register_blueprint(habit_entries, url_prefix="/habit_entries")
     app.register_blueprint(habits, url_prefix="/habits")
+    app.register_blueprint(finances, url_prefix="/finances")
 
     return app
