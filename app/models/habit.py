@@ -57,7 +57,7 @@ class HabitEntry(BaseModel):
         return {
             "id": self.id,
             "habit_id": self.habit_id,
-            "status": self.status.value,
+            "status": self.status.value if self.status else None,
             "notes": self.notes,
             "created_at": self.created_at.strftime(TIME),
             "updated_at": self.updated_at.strftime(TIME)
