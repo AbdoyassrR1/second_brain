@@ -134,8 +134,7 @@ def update_task(task_id):
                 task.title = value
                 is_updated = True
 
-            # update the description even if the value if empty
-            elif key == "description":
+            elif key == "description" and value:
                 task.description = value
                 is_updated = True
 
