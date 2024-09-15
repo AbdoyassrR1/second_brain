@@ -78,3 +78,66 @@ def add_transaction():
         "message": "Transaction Created Successfully",
         "Transaction": new_transaction.to_dict()
     }), 201
+
+
+@finances.route("/update_transaction/<transaction_id>", methods=["PATCH"])
+@login_required
+def update_transaction(transaction_id):
+    """ update an existing transaction for the logged in user """
+    transaction = Transaction.query.filter_by(id=transaction_id, user_id=current_user.id).first()
+    if not transaction:
+        abort(404, description="Transaction Not Found Or Not Owned By The Current User")
+
+    data = request.form
+    # Allowed fields to update
+    allowed_fields = ["title", "description", "type", "amount", "sub_category"]
+    is_updated = False
+
+    # Validate and update the fields
+    for key, value in data.items():
+        if key in allowed_fields:
+
+            if key == "title" and value:
+                transaction.title = value
+                is_updated = True
+
+            elif key == "description" and value:
+                transaction.description = value
+                is_updated = True
+
+            elif key == "type" and value:
+                try:
+                    transaction.type = TransactionType[value.upper()]
+                    is_updated = True
+                except KeyError:
+                    abort(400, description="Invalid type value")
+
+            elif key == "sub_category" and value:
+                try:
+                    transaction.sub_category = TransactionSubCategory[value.upper()]
+                    is_updated = True
+                except KeyError:
+                    abort(400, description="Invalid sub_category value")
+            
+            elif key == "amount" and value:
+                try:
+                    value = float(value)
+                    if value <= 0:
+                        abort(400, description="Amount must be a positive number")
+                    transaction.amount = value
+                    is_updated = True
+                except ValueError:
+                    abort(400, description="Invalid value for amount, must be a number")
+
+    # If no changes were made, return an error
+    if not is_updated:
+        abort(400, description="No valid fields to update or no changes made")
+
+    # Commit the changes to the database
+    db.session.commit()
+
+    return jsonify({
+        "status": "success",
+        "message": "Transaction Updated Successfully",
+        "Transaction": transaction.to_dict()
+    }), 200
