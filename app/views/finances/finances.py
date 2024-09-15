@@ -141,3 +141,20 @@ def update_transaction(transaction_id):
         "message": "Transaction Updated Successfully",
         "Transaction": transaction.to_dict()
     }), 200
+
+
+@finances.route("/delete_transaction/<transaction_id>", methods=["DELETE"])
+@login_required
+def delete_transaction(transaction_id):
+    """ delete transaction for the logged in user """
+    # Fetch the Transaction by id and make sure the user is the owner
+    transaction = Transaction.query.filter_by(id=transaction_id, user_id=current_user.id).first()
+    if not transaction:
+        abort(404, description="Transaction not found or not owned by the current user")
+    db.session.delete(transaction)
+    db.session.commit()
+
+    return jsonify({
+        "status": "success",
+        "message": "Transaction deleted successfully"
+    }), 200
