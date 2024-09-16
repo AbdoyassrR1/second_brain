@@ -1,6 +1,8 @@
 #!/usr/bin/python3
 from flask import Blueprint, abort, request, jsonify
 from flask_login import current_user, login_required
+from sqlalchemy import extract
+from datetime import datetime
 from app.models.finance import Transaction, TransactionType, TransactionSubCategory
 from app.app import db
 
@@ -157,4 +159,53 @@ def delete_transaction(transaction_id):
     return jsonify({
         "status": "success",
         "message": "Transaction deleted successfully"
+    }), 200
+
+
+@finances.route("/transaction_stats", methods=["GET"])
+@login_required
+def get_transaction_stats():
+    """
+    Get transaction stats per month for the logged-in user:
+    total income, total expenses, net savings, and total investments
+    """
+
+    # Get the current month and year
+    now = datetime.now()
+    current_month = now.month
+    current_year = now.year
+
+    # Fetch all transactions for the current user in the current month
+    transactions = Transaction.query.filter_by(user_id=current_user.id).filter(
+        extract('month', Transaction.created_at) == current_month,
+        extract('year', Transaction.created_at) == current_year
+    ).all()
+
+    # Initialize totals
+    total_income = 0.0
+    total_expenses = 0.0
+    total_investments = 0.0
+
+    # Calculate totals for each type of transaction
+    for transaction in transactions:
+        if transaction.type == TransactionType.INCOME:
+            total_income += transaction.amount
+        elif transaction.type == TransactionType.EXPENSE:
+            total_expenses += transaction.amount
+        elif transaction.type == TransactionType.INVESTMENT:
+            total_investments += transaction.amount
+
+    # Calculate net savings
+    net_savings = total_income - total_expenses
+
+    # Return the calculated stats
+    return jsonify({
+        "status": "success",
+        "month report": {
+            "month": now.strftime("%B"),  # Get the current month as a string
+            "total_income": total_income,
+            "total_expenses": total_expenses,
+            "net_savings": net_savings,
+            "total_investments": total_investments
+            }
     }), 200
