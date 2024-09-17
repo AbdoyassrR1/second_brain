@@ -5,6 +5,7 @@ from flask_login import LoginManager
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_bcrypt import Bcrypt
+from flasgger import Swagger
 
 
 db = SQLAlchemy()
@@ -12,6 +13,7 @@ migrate = Migrate()
 login_manager = LoginManager()
 limiter = Limiter(get_remote_address, default_limits=["200 per day", "50 per hour"])
 bcrypt = Bcrypt()
+swagger = Swagger()
 
 def create_app():
     app = Flask(__name__)
@@ -22,6 +24,7 @@ def create_app():
     login_manager.init_app(app)
     limiter.init_app(app)
     bcrypt.init_app(app)
+    swagger.init_app(app)
 
 
     from app.models.user import User
