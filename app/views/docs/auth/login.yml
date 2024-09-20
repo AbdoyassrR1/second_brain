@@ -1,0 +1,44 @@
+tags:
+  - "Auth"
+summary: "Log in an existing user"
+description: "Authenticate a user and start a session."
+operationId: "loginUser"
+parameters:
+  - name: "email"
+    in: "formData"
+    required: true
+    type: "string"
+    description: "Email of the user"
+  - name: "password"
+    in: "formData"
+    required: true
+    type: "string"
+    description: "Password of the user"
+  - name: "remember_me"
+    in: "formData"
+    required: false
+    type: "boolean"
+    description: "Remember the user for future sessions"
+responses:
+  200:
+    description: "User logged in successfully"
+    schema:
+      type: "object"
+      properties:
+        status:
+          type: "string"
+          description: "Response status"
+        user:
+          type: "object"
+          properties:
+            username:
+              type: "string"
+              description: "Username of the logged-in user"
+            email:
+              type: "string"
+              description: "Email of the logged-in user"
+        message:
+          type: "string"
+          description: "Success message"
+  401:
+    description: "Invalid email or password"
