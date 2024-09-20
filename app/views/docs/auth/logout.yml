@@ -1,0 +1,19 @@
+tags:
+  - "Auth"
+summary: "Log out the current user"
+description: "End the user session and log out the user."
+operationId: "logoutUser"
+responses:
+  200:
+    description: "User logged out successfully"
+    schema:
+      type: "object"
+      properties:
+        status:
+          type: "string"
+          description: "Response status"
+        message:
+          type: "string"
+          description: "Success message"
+  401:
+    description: "User not authenticated"
