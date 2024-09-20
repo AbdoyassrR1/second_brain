@@ -1,0 +1,82 @@
+tags:
+  - "Tasks"
+summary: "Get all tasks"
+description: "Retrieve a list of tasks for the authenticated user, with optional filtering."
+operationId: "getTasks"
+parameters:
+  - name: "search"
+    in: "query"
+    type: "string"
+    description: "Search tasks by title"
+    required: false
+  - name: "status"
+    in: "query"
+    type: "string"
+    description: "Filter tasks by status (TODO, IN_PROGRESS, DONE)"
+    required: false
+  - name: "category"
+    in: "query"
+    type: "string"
+    description: "Filter tasks by category (WORK, WORKOUT, STUDY)"
+    required: false
+  - name: "priority"
+    in: "query"
+    type: "string"
+    description: "Filter tasks by priority (HIGH, MEDIUM, LOW)"
+    required: false
+  - name: "page"
+    in: "query"
+    type: "integer"
+    description: "Page number for pagination"
+    required: false
+  - name: "per_page"
+    in: "query"
+    type: "integer"
+    description: "Number of tasks per page"
+    required: false
+responses:
+  200:
+    description: "Successfully retrieved tasks"
+    schema:
+      type: "object"
+      properties:
+        tasks:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              id:
+                type: "integer"
+                description: "Task ID"
+              title:
+                type: "string"
+                description: "Task title"
+              description:
+                type: "string"
+                description: "Task description"
+              status:
+                type: "string"
+                description: "Task status"
+              priority:
+                type: "string"
+                description: "Task priority"
+              category:
+                type: "string"
+                description: "Task category"
+        total_tasks:
+          type: "integer"
+          description: "Total number of tasks"
+        total_pages:
+          type: "integer"
+          description: "Total number of pages"
+        current_page:
+          type: "integer"
+          description: "Current page number"
+        next_page:
+          type: "integer"
+          description: "Next page number if available"
+        prev_page:
+          type: "integer"
+          description: "Previous page number if available"
+  404:
+    description: "No tasks found"
