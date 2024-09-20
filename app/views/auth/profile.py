@@ -3,6 +3,7 @@ from flask import Blueprint, request, jsonify, abort
 from flask_login import logout_user, login_required, current_user
 from app.models.user import User
 from app.app import db
+from flasgger.utils import swag_from
 
 
 profile = Blueprint("profile", __name__)
@@ -11,6 +12,7 @@ profile = Blueprint("profile", __name__)
 # Protected profile route
 @profile.route("/", strict_slashes=False)
 @login_required
+@swag_from("../docs/auth/get_profile.yml")
 def get_profile():
     """ get the logged in user profile """
     return jsonify(current_user.to_dict()), 200
@@ -19,6 +21,7 @@ def get_profile():
 # Protected profile update route
 @profile.route("/update_profile", methods=["PATCH"])
 @login_required
+@swag_from("../docs/auth/update_profile.yml")
 def update_profile():
     """ Update the logged in user data """
     updated_data = request.form
@@ -73,6 +76,7 @@ def update_profile():
 
 @profile.route("/delete_account", methods=["DELETE"])
 @login_required
+@swag_from("../docs/auth/delete_account.yml")
 def delete_account():
     """ Delete the logged in user account """
     password = request.form.get("password")
