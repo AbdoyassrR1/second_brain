@@ -1,8 +1,9 @@
 #!/usr/bin/python3
-from flask import Blueprint, jsonify,  request, abort
+from flask import Blueprint, jsonify, request, abort
 from flask_login import login_user, logout_user, login_required
 from app.app import db, limiter
 from app.models.user import User
+from flasgger.utils import swag_from
 
 auth = Blueprint("auth", __name__)
 
@@ -10,6 +11,7 @@ auth = Blueprint("auth", __name__)
 # Registration route
 @auth.route("/register", methods=["POST"])
 @limiter.limit("5/minute")
+@swag_from("../docs/auth/register.yml")
 def register():
     # get user data
     username = request.form["username"]
@@ -48,6 +50,7 @@ def register():
 # Login route
 @auth.route("/login", methods=["POST"])
 @limiter.limit("5/minute")
+@swag_from("../docs/auth/login.yml")
 def login():
     # get user data
     email = request.form["email"]
@@ -77,6 +80,7 @@ def login():
 # Logout route
 @auth.route("/logout")
 @login_required
+@swag_from("../docs/auth/logout.yml")
 def logout():
     logout_user()
     return jsonify({
