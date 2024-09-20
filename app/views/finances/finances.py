@@ -5,12 +5,14 @@ from sqlalchemy import extract
 from datetime import datetime
 from app.models.finance import Transaction, TransactionType, TransactionSubCategory
 from app.app import db
+from flasgger.utils import swag_from
 
 finances = Blueprint("finances", __name__)
 
 
 @finances.route("/", methods=["GET"])
 @login_required
+@swag_from("../docs/finances/get_transactions.yml")
 def get_transactions():
     """ get all transaction for the logged in user """
     query = Transaction.query.filter_by(user_id=current_user.id)
@@ -33,6 +35,7 @@ def get_transactions():
 
 @finances.route("/add_transaction", methods=["POST"])
 @login_required
+@swag_from("../docs/finances/add_transaction.yml")
 def add_transaction():
     """ add new transaction for the logged in user """
     data = request.form
@@ -84,6 +87,7 @@ def add_transaction():
 
 @finances.route("/update_transaction/<transaction_id>", methods=["PATCH"])
 @login_required
+@swag_from("../docs/finances/update_transaction.yml")
 def update_transaction(transaction_id):
     """ update an existing transaction for the logged in user """
     transaction = Transaction.query.filter_by(id=transaction_id, user_id=current_user.id).first()
@@ -147,6 +151,7 @@ def update_transaction(transaction_id):
 
 @finances.route("/delete_transaction/<transaction_id>", methods=["DELETE"])
 @login_required
+@swag_from("../docs/finances/delete_transaction.yml")
 def delete_transaction(transaction_id):
     """ delete transaction for the logged in user """
     # Fetch the Transaction by id and make sure the user is the owner
@@ -164,6 +169,7 @@ def delete_transaction(transaction_id):
 
 @finances.route("/transaction_stats", methods=["GET"])
 @login_required
+@swag_from("../docs/finances/transaction_stats.yml")
 def get_transaction_stats():
     """
     Get transaction stats per month for the logged-in user:
