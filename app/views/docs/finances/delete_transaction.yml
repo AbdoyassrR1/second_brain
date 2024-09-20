@@ -1,0 +1,15 @@
+tags:
+  - "Transactions"
+summary: "Delete a transaction"
+description: "Delete an existing transaction for the logged-in user"
+parameters:
+  - name: "transaction_id"
+    in: "path"
+    required: true
+    type: "string"
+    description: "ID of the transaction to delete"
+responses:
+  200:
+    description: "Transaction deleted successfully"
+  404:
+    description: "Transaction not found or not owned by the current user"
