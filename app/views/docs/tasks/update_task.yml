@@ -1,0 +1,75 @@
+tags:
+  - "Tasks"
+summary: "Update an existing task"
+description: "Modify a task owned by the authenticated user."
+operationId: "updateTask"
+parameters:
+  - name: "task_id"
+    in: "path"
+    required: true
+    type: "string"
+    description: "ID of the task to be updated"
+  - name: "title"
+    in: "formData"
+    required: false
+    type: "string"
+    description: "Updated title of the task"
+  - name: "description"
+    in: "formData"
+    required: false
+    type: "string"
+    description: "Updated description of the task"
+  - name: "status"
+    in: "formData"
+    required: false
+    type: "string"
+    description: "Updated status of the task"
+  - name: "priority"
+    in: "formData"
+    required: false
+    type: "string"
+    description: "Updated priority of the task"
+  - name: "category"
+    in: "formData"
+    required: false
+    type: "string"
+    description: "Updated category of the task"
+responses:
+  200:
+    description: "Task updated successfully"
+    schema:
+      type: "object"
+      properties:
+        status:
+          type: "string"
+          description: "Response status"
+        message:
+          type: "string"
+          description: "Success message"
+        task:
+          type: "object"
+          properties:
+            id:
+              type: "integer"
+              description: "Task ID"
+            title:
+              type: "string"
+              description: "Task title"
+            description:
+              type: "string"
+              description: "Task description"
+            status:
+              type: "string"
+              description: "Task status"
+            priority:
+              type: "string"
+              description: "Task priority"
+            category:
+              type: "string"
+              description: "Task category"
+  404:
+    description: "Task not found or not owned by the current user"
+  400:
+    description: "Invalid fields or values"
+  409:
+    description: "Task with the same title already exists for the current user"
