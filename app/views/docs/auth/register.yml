@@ -1,0 +1,46 @@
+tags:
+  - "Auth"
+summary: "Register a new user"
+description: "Create a new user account and log in the user."
+operationId: "registerUser"
+parameters:
+  - name: "username"
+    in: "formData"
+    required: true
+    type: "string"
+    description: "Username for the new account"
+  - name: "email"
+    in: "formData"
+    required: true
+    type: "string"
+    description: "Email for the new account"
+  - name: "password"
+    in: "formData"
+    required: true
+    type: "string"
+    description: "Password for the new account"
+responses:
+  201:
+    description: "User created and logged in successfully"
+    schema:
+      type: "object"
+      properties:
+        status:
+          type: "string"
+          description: "Response status"
+        user:
+          type: "object"
+          properties:
+            username:
+              type: "string"
+              description: "Username of the created user"
+            email:
+              type: "string"
+              description: "Email of the created user"
+        message:
+          type: "string"
+          description: "Success message"
+  400:
+    description: "Missing fields"
+  409:
+    description: "Username or email already exists"
