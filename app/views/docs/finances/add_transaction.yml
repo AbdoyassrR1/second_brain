@@ -1,0 +1,30 @@
+tags:
+  - "Transactions"
+summary: "Add a new transaction"
+description: "This endpoint allows you to add a transaction for a user"
+parameters:
+  - name: "title"
+    in: "formData"
+    required: true
+    type: "string"
+    description: "Title of the transaction"
+  - name: "amount"
+    in: "formData"
+    required: true
+    type: "number"
+    description: "Amount of the transaction"
+  - name: "type"
+    in: "formData"
+    required: true
+    type: "string"
+    description: "Type of the transaction (INCOME, EXPENSE, etc.)"
+  - name: "sub_category"
+    in: "formData"
+    required: false
+    type: "string"
+    description: "Optional sub-category"
+responses:
+  201:
+    description: "Transaction added successfully"
+  400:
+    description: "Invalid input"
