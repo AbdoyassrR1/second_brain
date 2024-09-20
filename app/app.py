@@ -18,6 +18,10 @@ swagger = Swagger()
 def create_app():
     app = Flask(__name__)
 
+    # Configure the app (set database URI, secret key, etc.)
+    app.config["SQLALCHEMY_DATABASE_URI"] = ""
+    app.config['SECRET_KEY'] = ""
+
     # Initialize the app
     db.init_app(app)
     migrate.init_app(app, db)
@@ -28,8 +32,6 @@ def create_app():
 
 
     from app.models.user import User
-    from app.models.habit import Habit, HabitEntry
-    from app.models.task import Task
 
     @login_manager.user_loader
     def load_user(user_id):
