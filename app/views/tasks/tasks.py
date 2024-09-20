@@ -3,12 +3,14 @@ from flask import Blueprint, request, abort, jsonify
 from flask_login import current_user, login_required
 from app.models.task import Task, TaskCategory, TaskPriority, TaskStatus
 from app.app import db
+from flasgger.utils import swag_from
 
 
 tasks = Blueprint("tasks", __name__)
 
 @tasks.route("/", methods=["GET"], strict_slashes=False)
 @login_required
+@swag_from("../docs/tasks/get_tasks.yml")
 def get_tasks():
     """get all tasks related to the logged in user"""
     query = Task.query.filter_by(user_id=current_user.id)
@@ -68,6 +70,7 @@ def get_tasks():
 
 @tasks.route("/create_task", methods=["POST"])
 @login_required
+@swag_from("../docs/tasks/create_task.yml")
 def create_task():
     """Create a new task for the logged in user"""
     data = request.form
@@ -111,6 +114,7 @@ def create_task():
 
 @tasks.route("/update_task/<task_id>", methods=["PATCH"])
 @login_required
+@swag_from("../docs/tasks/update_task.yml")
 def update_task(task_id):
     """Update an existing task for the logged in user"""
     data = request.form
@@ -175,6 +179,7 @@ def update_task(task_id):
 
 @tasks.route("/delete_task/<task_id>", methods=["DELETE"])
 @login_required
+@swag_from("../docs/tasks/delete_task.yml")
 def delete_task(task_id):
     """ delete task for the logged in user """
     # Fetch the task by id and make sure the user is the owner
