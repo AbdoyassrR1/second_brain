@@ -1,0 +1,27 @@
+tags:
+  - "Profile"
+summary: "Delete user account"
+description: "Delete the account of the currently logged-in user."
+operationId: "deleteUserAccount"
+parameters:
+  - name: "password"
+    in: "formData"
+    required: true
+    type: "string"
+    description: "Password for account confirmation"
+responses:
+  200:
+    description: "User account deleted successfully"
+    schema:
+      type: "object"
+      properties:
+        status:
+          type: "string"
+          description: "Response status"
+        message:
+          type: "string"
+          description: "Success message"
+  400:
+    description: "Password confirmation is required or incorrect"
+  401:
+    description: "Incorrect password"
