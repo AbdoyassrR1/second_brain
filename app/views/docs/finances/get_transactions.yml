@@ -1,0 +1,43 @@
+tags:
+  - "Transactions"
+summary: "Get all transactions"
+description: "Fetch all transactions for the logged-in user. Optionally, you can filter the transactions by their type."
+operationId: "getTransactions"
+parameters:
+  - name: "type"
+    in: "query"
+    type: "string"
+    description: "Filter transactions by type (e.g., INCOME, EXPENSE, etc.)"
+    required: false
+responses:
+  200:
+    description: "Successfully retrieved the transactions"
+    schema:
+      type: "array"
+      items:
+        type: "object"
+        properties:
+          id:
+            type: "integer"
+            description: "The ID of the transaction"
+          title:
+            type: "string"
+            description: "The title of the transaction"
+          type:
+            type: "string"
+            description: "The type of the transaction (e.g., INCOME, EXPENSE)"
+          amount:
+            type: "number"
+            format: "float"
+            description: "The amount of the transaction"
+          created_at:
+            type: "string"
+            format: "date-time"
+            description: "The timestamp when the transaction was created"
+          description:
+            type: "string"
+            description: "Additional details about the transaction"
+  400:
+    description: "Invalid type query parameter"
+  401:
+    description: "Authentication required"
