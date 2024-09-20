@@ -1,0 +1,9 @@
+tags:
+  - "Transactions"
+summary: "Get transaction statistics"
+description: "Get transaction stats (total income, expenses, etc.) for the current month"
+responses:
+  200:
+    description: "Statistics retrieved successfully"
+  400:
+    description: "Error retrieving statistics"
