@@ -1,0 +1,26 @@
+tags:
+  - "Profile"
+summary: "Get logged-in user profile"
+description: "Retrieve the profile information of the currently logged-in user."
+operationId: "getUserProfile"
+responses:
+  200:
+    description: "Successfully retrieved user profile"
+    schema:
+      type: "object"
+      properties:
+        status:
+          type: "string"
+          description: "Response status"
+        user:
+          type: "object"
+          description: "Profile details of the user"
+          properties:
+            username:
+              type: "string"
+              description: "Username of the user"
+            email:
+              type: "string"
+              description: "Email of the user"
+  401:
+    description: "User not authenticated"
