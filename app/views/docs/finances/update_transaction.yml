@@ -1,0 +1,42 @@
+tags:
+  - "Transactions"
+summary: "Update a transaction"
+description: "Update an existing transaction for the logged-in user"
+parameters:
+  - name: "transaction_id"
+    in: "path"
+    required: true
+    type: "string"
+    description: "ID of the transaction to update"
+  - name: "title"
+    in: "formData"
+    required: false
+    type: "string"
+    description: "Title of the transaction"
+  - name: "amount"
+    in: "formData"
+    required: false
+    type: "number"
+    description: "Amount of the transaction"
+  - name: "type"
+    in: "formData"
+    required: false
+    type: "string"
+    description: "Type of the transaction (INCOME, EXPENSE, etc.)"
+  - name: "sub_category"
+    in: "formData"
+    required: false
+    type: "string"
+    description: "Optional sub-category"
+  - name: "description"
+    in: "formData"
+    required: false
+    type: "string"
+    description: "Description of the transaction"
+responses:
+  200:
+    description: "Transaction updated successfully"
+  400:
+    description: "Invalid input or no valid fields to update"
+  404:
+    description: "Transaction not found or not owned by the current user"
