@@ -1,0 +1,39 @@
+tags:
+  - "Profile"
+summary: "Update user profile"
+description: "Update the profile information of the currently logged-in user."
+operationId: "updateUserProfile"
+parameters:
+  - name: "username"
+    in: "formData"
+    required: false
+    type: "string"
+    description: "New username for the user"
+  - name: "password"
+    in: "formData"
+    required: false
+    type: "string"
+    description: "New password for the user"
+  - name: "old_password"
+    in: "formData"
+    required: false
+    type: "string"
+    description: "Old password for authentication"
+responses:
+  200:
+    description: "Profile updated successfully"
+    schema:
+      type: "object"
+      properties:
+        status:
+          type: "string"
+          description: "Response status"
+        message:
+          type: "string"
+          description: "Success message"
+  400:
+    description: "Invalid input or no changes made"
+  401:
+    description: "Incorrect old password"
+  409:
+    description: "Username already exists"
