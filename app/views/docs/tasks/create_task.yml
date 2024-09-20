@@ -1,0 +1,68 @@
+tags:
+  - "Tasks"
+summary: "Create a new task"
+description: "Add a new task for the authenticated user."
+operationId: "createTask"
+parameters:
+  - name: "title"
+    in: "formData"
+    required: true
+    type: "string"
+    description: "Title of the task"
+  - name: "description"
+    in: "formData"
+    required: false
+    type: "string"
+    description: "Description of the task"
+  - name: "status"
+    in: "formData"
+    required: true
+    type: "string"
+    description: "Status of the task (TODO, IN_PROGRESS, DONE)"
+  - name: "priority"
+    in: "formData"
+    required: true
+    type: "string"
+    description: "Priority of the task (HIGH, MEDIUM, LOW)"
+  - name: "category"
+    in: "formData"
+    required: true
+    type: "string"
+    description: "Category of the task (WORK, WORKOUT, STUDY)"
+responses:
+  201:
+    description: "Task created successfully"
+    schema:
+      type: "object"
+      properties:
+        status:
+          type: "string"
+          description: "Response status"
+        message:
+          type: "string"
+          description: "Success message"
+        task:
+          type: "object"
+          properties:
+            id:
+              type: "integer"
+              description: "Task ID"
+            title:
+              type: "string"
+              description: "Task title"
+            description:
+              type: "string"
+              description: "Task description"
+            status:
+              type: "string"
+              description: "Task status"
+            priority:
+              type: "string"
+              description: "Task priority"
+            category:
+              type: "string"
+              description: "Task category"
+  400:
+    description: "Missing required fields or invalid values"
+  409:
+    description: "Task already exists for the current user"
