@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 from flask import Blueprint, request, abort, jsonify
 from flask_login import current_user, login_required
+from flasgger.utils import swag_from
 from app.models.habit import HabitEntry, HabitEntryStatus, Habit
 from app.app import db, limiter, get_remote_address
 
@@ -13,6 +14,7 @@ def habit_rate_limit_key():
 
 @habit_entries.route("/<habit_id>", methods=["GET"])
 @login_required
+@swag_from("../docs/habits/get_habit_entries.yml")
 def get_habit_entries(habit_id):
     """Get a list of all entries for a certain habit by its id"""
     habit = Habit.query.filter_by(id=habit_id, user_id=current_user.id).first()
@@ -35,6 +37,7 @@ def get_habit_entries(habit_id):
 @habit_entries.route("/add_entry/<habit_id>", methods=["POST"])
 @limiter.limit("1 per day", key_func=habit_rate_limit_key)
 @login_required
+@swag_from("../docs/habits/create_habit_entry.yml")
 def create_habit_entry(habit_id):
     """ Log a new entry for a habit by its id, once per day """
     data = request.form
@@ -58,6 +61,7 @@ def create_habit_entry(habit_id):
 
 @habit_entries.route("/update_entry/<entry_id>", methods=["PATCH"])
 @login_required
+@swag_from("../docs/habits/update_habit_entry.yml")
 def update_habit_entry(entry_id):
     """Update an existing habit entry for the logged in user"""
     data = request.form
@@ -107,6 +111,7 @@ def update_habit_entry(entry_id):
 
 @habit_entries.route("/habit_stats/<habit_id>", methods=["GET"])
 @login_required
+@swag_from("../docs/habits/get_habit_stats.yml")
 def get_habit_stats(habit_id):
     """ get habit stats such as total entries completion rate """
     habit = Habit.query.filter_by(id=habit_id).first()
