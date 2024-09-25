@@ -1,0 +1,32 @@
+tags:
+  - "Habit Entries"
+summary: "Create a new habit entry"
+description: "Log a new entry for a habit, limited to one per day."
+operationId: "createHabitEntry"
+parameters:
+  - name: "habit_id"
+    in: "path"
+    required: true
+    type: "string"
+    description: "ID of the habit"
+  - name: "notes"
+    in: "formData"
+    required: false
+    type: "string"
+    description: "Notes about the entry"
+responses:
+  201:
+    description: "Habit entry created successfully"
+    schema:
+      type: "object"
+      properties:
+        status:
+          type: "string"
+          description: "Response status"
+        message:
+          type: "string"
+          description: "Success message"
+  404:
+    description: "Habit not found or not owned by the user"
+  429:
+    description: "Rate limit exceeded (one entry per day)"
