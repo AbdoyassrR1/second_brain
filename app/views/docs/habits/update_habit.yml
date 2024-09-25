@@ -1,0 +1,57 @@
+tags:
+  - "Habits"
+summary: "Update an existing habit"
+description: "Update an existing habit for the authenticated user."
+operationId: "updateHabit"
+parameters:
+  - name: "habit_id"
+    in: "path"
+    required: true
+    type: "string"
+    description: "ID of the habit to be updated"
+  - name: "title"
+    in: "formData"
+    required: false
+    type: "string"
+    description: "New title for the habit"
+  - name: "description"
+    in: "formData"
+    required: false
+    type: "string"
+    description: "New description for the habit"
+  - name: "status"
+    in: "formData"
+    required: false
+    type: "string"
+    description: "New status for the habit (ACTIVE, COMPLETED)"
+responses:
+  200:
+    description: "Habit updated successfully"
+    schema:
+      type: "object"
+      properties:
+        status:
+          type: "string"
+          description: "Response status"
+        message:
+          type: "string"
+          description: "Success message"
+        habit:
+          type: "object"
+          properties:
+            id:
+              type: "integer"
+              description: "Habit ID"
+            title:
+              type: "string"
+              description: "Habit title"
+            description:
+              type: "string"
+              description: "Habit description"
+            status:
+              type: "string"
+              description: "Habit status"
+  400:
+    description: "Missing required fields or invalid values"
+  409:
+    description: "Habit already exists for the current user"
