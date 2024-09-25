@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 from flask import Blueprint, request, abort, jsonify
 from flask_login import current_user, login_required
+from flasgger.utils import swag_from
 from app.models.habit import Habit, HabitStatus
 from app.app import db
 
@@ -9,6 +10,7 @@ habits = Blueprint("habits", __name__)
 
 @habits.route("/", methods=["GET"], strict_slashes=False)
 @login_required
+@swag_from("../docs/habits/get_habits.yml")
 def get_habits():
     """ Get all habits related to the logged in User """
     query = Habit.query.filter_by(user_id=current_user.id)
@@ -33,6 +35,7 @@ def get_habits():
 
 @habits.route("/create_habit", methods=["POST"])
 @login_required
+@swag_from("../docs/habits/create_habit.yml")
 def create_habit():
     """Create a new habit for the logged in user"""
     data = request.form
@@ -70,6 +73,7 @@ def create_habit():
 
 @habits.route("/update_habit/<habit_id>", methods=["PATCH"])
 @login_required
+@swag_from("../docs/habits/update_habit.yml")
 def update_habit(habit_id):
     """Update an existing habit for the logged in user"""
     data = request.form
@@ -120,6 +124,7 @@ def update_habit(habit_id):
 
 @habits.route("/delete_habit/<habit_id>", methods=["DELETE"])
 @login_required
+@swag_from("../docs/habits/delete_habit.yml")
 def delete_habit(habit_id):
     """ delete habit for the logged in user """
     # Fetch the habit by id and make sure the user is the owner
