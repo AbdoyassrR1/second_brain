@@ -1,0 +1,39 @@
+tags:
+  - "Habit Entries"
+summary: "Get all entries for a habit"
+description: "Retrieve all entries for a specific habit by its ID."
+operationId: "getHabitEntries"
+parameters:
+  - name: "habit_id"
+    in: "path"
+    required: true
+    type: "string"
+    description: "ID of the habit"
+responses:
+  200:
+    description: "List of habit entries"
+    schema:
+      type: "object"
+      properties:
+        habit:
+          type: "string"
+          description: "Title of the habit"
+        entries:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              id:
+                type: "integer"
+                description: "Entry ID"
+              notes:
+                type: "string"
+                description: "Notes about the entry"
+              status:
+                type: "string"
+                description: "Status of the entry"
+              created_at:
+                type: "string"
+                description: "Date of entry creation"
+  404:
+    description: "Habit not found or not owned by the user"
