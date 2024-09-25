@@ -1,0 +1,38 @@
+tags:
+  - "Habits"
+summary: "Get all habits"
+description: "Retrieve all habits for the authenticated user, with optional filters."
+operationId: "getHabits"
+parameters:
+  - name: "search"
+    in: "query"
+    required: false
+    type: "string"
+    description: "Search for habits by title"
+  - name: "status"
+    in: "query"
+    required: false
+    type: "string"
+    description: "Filter habits by status (ACTIVE, COMPLETED)"
+responses:
+  200:
+    description: "List of habits"
+    schema:
+      type: "array"
+      items:
+        type: "object"
+        properties:
+          id:
+            type: "integer"
+            description: "Habit ID"
+          title:
+            type: "string"
+            description: "Habit title"
+          description:
+            type: "string"
+            description: "Habit description"
+          status:
+            type: "string"
+            description: "Habit status"
+  400:
+    description: "Invalid status filter"
