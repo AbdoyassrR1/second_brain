@@ -1,0 +1,25 @@
+tags:
+  - "Habits"
+summary: "Delete an existing habit"
+description: "Delete an existing habit for the authenticated user."
+operationId: "deleteHabit"
+parameters:
+  - name: "habit_id"
+    in: "path"
+    required: true
+    type: "string"
+    description: "ID of the habit to be deleted"
+responses:
+  200:
+    description: "Habit deleted successfully"
+    schema:
+      type: "object"
+      properties:
+        status:
+          type: "string"
+          description: "Response status"
+        message:
+          type: "string"
+          description: "Success message"
+  404:
+    description: "Habit not found or not owned by the current user"
