@@ -1,0 +1,34 @@
+tags:
+  - "Habit Entries"
+summary: "Get habit statistics"
+description: "Get statistics for a habit, such as total entries and completion rate."
+operationId: "getHabitStats"
+parameters:
+  - name: "habit_id"
+    in: "path"
+    required: true
+    type: "string"
+    description: "ID of the habit"
+responses:
+  200:
+    description: "Habit statistics"
+    schema:
+      type: "object"
+      properties:
+        status:
+          type: "string"
+          description: "Response status"
+        total_entries:
+          type: "integer"
+          description: "Total number of entries"
+        completed_entries:
+          type: "integer"
+          description: "Number of completed entries"
+        skipped_entries:
+          type: "integer"
+          description: "Number of skipped entries"
+        completion_rate:
+          type: "string"
+          description: "Completion rate as a percentage"
+  404:
+    description: "Habit not found or not owned by the user"
