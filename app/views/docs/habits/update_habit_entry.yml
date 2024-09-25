@@ -1,0 +1,49 @@
+tags:
+  - "Habit Entries"
+summary: "Update an existing habit entry"
+description: "Update an entry for the habit by its ID."
+operationId: "updateHabitEntry"
+parameters:
+  - name: "entry_id"
+    in: "path"
+    required: true
+    type: "string"
+    description: "ID of the habit entry"
+  - name: "notes"
+    in: "formData"
+    required: false
+    type: "string"
+    description: "New notes for the entry"
+  - name: "status"
+    in: "formData"
+    required: false
+    type: "string"
+    description: "New status for the entry (COMPLETED, SKIPPED)"
+responses:
+  200:
+    description: "Habit entry updated successfully"
+    schema:
+      type: "object"
+      properties:
+        status:
+          type: "string"
+          description: "Response status"
+        message:
+          type: "string"
+          description: "Success message"
+        habit_entry:
+          type: "object"
+          properties:
+            id:
+              type: "integer"
+              description: "Entry ID"
+            notes:
+              type: "string"
+              description: "Updated notes"
+            status:
+              type: "string"
+              description: "Updated status"
+  400:
+    description: "No valid fields to update or no changes made"
+  404:
+    description: "Entry not found or invalid status"
