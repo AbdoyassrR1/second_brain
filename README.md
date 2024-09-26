@@ -1,6 +1,3 @@
-Here's the updated `README.md` file with the API endpoints for the habit entries included:
-
-```markdown
 # Second Brain
 
 ## Project Overview
