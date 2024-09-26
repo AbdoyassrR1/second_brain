@@ -65,24 +65,20 @@ second_brain/
    cd second_brain
 Install the required packages:
 
-bash
-Copy code
-pip install -r requirements.txt
-Configure the database connection in app/app.py:
+2. Install the required packages:
+    pip install -r requirements.txt
 
-python
-Copy code
-app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+mysqldb://<username>:<password>@localhost/second_brain"
-Run database migrations:
+3. Configure the database connection in app/app.py:
+    app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+mysqldb://<username>:<password>@localhost/<db>"
 
-bash
-Copy code
-flask db upgrade
-Start the application:
+4. Run database migrations:
+    flask db upgrade
 
-bash
-Copy code
-python run.py
+5. Start the application:
+    python run.py
+
+
+
 API Endpoints
 Task Management
 GET /tasks/: Retrieve all tasks related to the logged-in user. Supports filtering by search, status, category, and priority.
