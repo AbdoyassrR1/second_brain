@@ -25,10 +25,37 @@
 
 ## File Structure
 
-second_brain/ ├── README.md ├── app/ │ ├── init.py │ ├── app.py │ ├── migrations/ │ ├── models/ │ │ ├── init.py │ │ ├── base.py │ │ ├── finance.py │ │ ├── habit.py │ │ ├── task.py │ │ └── user.py │ └── views/ │ ├── init.py │ ├── auth/ │ │ ├── init.py │ │ ├── auth.py │ │ └── profile.py │ ├── docs/ │ ├── finances/ │ │ ├── init.py │ │ └── finances.py │ ├── habits/ │ │ ├── init.py │ │ ├── habit_entries.py │ │ └── habits.py │ └── tasks/ │ ├── init.py │ └── tasks.py └── run.py
-
-bash
-Copy code
+second_brain/
+├── README.md
+├── app/
+│   ├── __init__.py
+│   ├── app.py
+│   ├── migrations/
+│   ├── models/
+│   │   ├── __init__.py
+│   │   ├── base.py
+│   │   ├── finance.py
+│   │   ├── habit.py
+│   │   ├── task.py
+│   │   └── user.py
+│   └── views/
+│       ├── __init__.py
+│       ├── auth/
+│       │   ├── __init__.py
+│       │   ├── auth.py
+│       │   └── profile.py
+│       ├── docs/
+│       ├── finances/
+│       │   ├── __init__.py
+│       │   └── finances.py
+│       ├── habits/
+│       │   ├── __init__.py
+│       │   ├── habit_entries.py
+│       │   └── habits.py
+│       └── tasks/
+│           ├── __init__.py
+│           └── tasks.py
+└── run.py
 
 ## Installation
 
