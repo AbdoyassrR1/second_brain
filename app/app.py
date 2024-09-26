@@ -6,6 +6,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_bcrypt import Bcrypt
 from flasgger import Swagger
+from os import getenv
 
 
 db = SQLAlchemy()
@@ -18,9 +19,16 @@ swagger = Swagger()
 def create_app():
     app = Flask(__name__)
 
+
+    DB_USER = getenv(DB_USER)
+    DB_PASSWORD = getenv(DB_PASSWORD)
+    DB_HOST = getenv(DB_HOST)
+    DB_NAME = getenv(DB_NAME)
+    SECRET_KEY = getenv(SECRET_KEY)
+
     # Configure the app (set database URI, secret key, etc.)
-    app.config["SQLALCHEMY_DATABASE_URI"] = ""
-    app.config['SECRET_KEY'] = ""
+    app.config["SQLALCHEMY_DATABASE_URI"] = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}"
+    app.config['SECRET_KEY'] = SECRET_KEY
 
     # Initialize the app
     db.init_app(app)
