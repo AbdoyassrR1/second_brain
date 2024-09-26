@@ -25,6 +25,7 @@
 
 ## File Structure
 
+```
 second_brain/
 ├── README.md
 ├── app/
@@ -56,6 +57,7 @@ second_brain/
 │           ├── __init__.py
 │           └── tasks.py
 └── run.py
+```
 
 ## Installation
 
@@ -63,46 +65,88 @@ second_brain/
    ```bash
    git clone <repository-url>
    cd second_brain
-Install the required packages:
+   ```
 
 2. Install the required packages:
-    pip install -r requirements.txt
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-3. Configure the database connection in app/app.py:
-    app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+mysqldb://<username>:<password>@localhost/<db>"
+3. Configure the database connection in `app/app.py`:
+   ```python
+   app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+mysqldb://<username>:<password>@localhost/second_brain"
+   ```
 
 4. Run database migrations:
-    flask db upgrade
+   ```bash
+   flask db upgrade
+   ```
 
 5. Start the application:
-    python run.py
+   ```bash
+   python run.py
+   ```
 
+## API Endpoints
 
+### Task Management
+- **GET /tasks/**
+  - Description: Retrieve all tasks related to the logged-in user.
+  - Filters: Supports filtering by search, status, category, and priority.
 
-API Endpoints
-Task Management
-GET /tasks/: Retrieve all tasks related to the logged-in user. Supports filtering by search, status, category, and priority.
-POST /tasks/create_task: Create a new task for the logged-in user. Requires title, status, priority, and category.
-PATCH /tasks/update_task/<task_id>: Update an existing task. Valid fields include title, description, status, priority, and category.
-DELETE /tasks/delete_task/<task_id>: Delete a task for the logged-in user.
-Habit Management
-GET /habits/: Retrieve all habits related to the logged-in user.
-POST /habits/create_habit: Create a new habit.
-PATCH /habits/update_habit/<habit_id>: Update an existing habit.
-DELETE /habits/delete_habit/<habit_id>: Delete a habit.
-Financial Management
-GET /finances/: Retrieve all financial transactions.
-POST /finances/add_transaction: Add a new financial transaction.
-PATCH /finances/update_transaction/<transaction_id>: Update an existing transaction.
-DELETE /finances/delete_transaction/<transaction_id>: Delete a financial transaction.
-GET /transaction_stats: Get monthly statistics of the user's financial situation.
-Error Handling
+- **POST /tasks/create_task**
+  - Description: Create a new task for the logged-in user.
+  - Required Fields: `title`, `status`, `priority`, and `category`.
+
+- **PATCH /tasks/update_task/<task_id>**
+  - Description: Update an existing task.
+  - Valid Fields: `title`, `description`, `status`, `priority`, and `category`.
+
+- **DELETE /tasks/delete_task/<task_id>**
+  - Description: Delete a task for the logged-in user.
+
+### Habit Management
+- **GET /habits/**
+  - Description: Retrieve all habits related to the logged-in user.
+
+- **POST /habits/create_habit**
+  - Description: Create a new habit.
+
+- **PATCH /habits/update_habit/<habit_id>**
+  - Description: Update an existing habit.
+
+- **DELETE /habits/delete_habit/<habit_id>**
+  - Description: Delete a habit.
+
+### Financial Management
+- **GET /finances/**
+  - Description: Retrieve all financial transactions.
+
+- **POST /finances/add_transaction**
+  - Description: Add a new financial transaction.
+
+- **PATCH /finances/update_transaction/<transaction_id>**
+  - Description: Update an existing transaction.
+
+- **DELETE /finances/delete_transaction/<transaction_id>**
+  - Description: Delete a financial transaction.
+
+- **GET /transaction_stats**
+  - Description: Get monthly statistics of the user's financial situation.
+
+## Error Handling
+
 The application provides standardized error handling for various scenarios:
 
-400 Bad Request: Returned when there are validation issues or missing data.
-401 Unauthorized: Returned for unauthorized access.
-404 Not Found: Returned when a requested resource cannot be found.
-409 Conflict: Returned when trying to create a duplicate resource.
-429 Too Many Requests: Returned when rate limits are exceeded.
-Contributing
+- **400 Bad Request**: Returned when there are validation issues or missing data.
+- **401 Unauthorized**: Returned for unauthorized access.
+- **404 Not Found**: Returned when a requested resource cannot be found.
+- **409 Conflict**: Returned when trying to create a duplicate resource.
+- **429 Too Many Requests**: Returned when rate limits are exceeded.
+
+## Contributing
+
 Contributions are welcome! Please feel free to submit a pull request or report issues.
+```
+
+This format makes it easier to read and understand the API endpoints and their functionality. You can copy this into your `README.md` file. Let me know if you need further adjustments!
