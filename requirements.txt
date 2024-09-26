@@ -1,7 +1,10 @@
-Flask
+flask
 Flask-SQLAlchemy
 Flask-Migrate
 Flask-Login
 Flask-Limiter
 Flask-Bcrypt
 Flasgger
+sqlalchemy
+psycopg2-binary
+flask_cors
