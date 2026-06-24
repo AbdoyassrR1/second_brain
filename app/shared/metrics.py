@@ -119,6 +119,18 @@ app_startup_time_seconds = Gauge(
     "Application startup time in seconds",
 )
 
+# ==================== AUTH SECURITY METRICS ====================
+
+account_lockouts_total = Counter(
+    "account_lockouts_total",
+    "Total account lockouts triggered by too many failed logins",
+)
+
+password_resets_total = Counter(
+    "password_resets_total",
+    "Total password reset completions",
+)
+
 # ==================== UTILITY FUNCTIONS ====================
 
 

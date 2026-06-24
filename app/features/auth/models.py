@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 """Auth feature models: User and Role."""
 
-from random import random
+import random
 
 from sqlalchemy import Column, String, Boolean, DateTime, Enum, Text, Date, Integer, ForeignKey
 from sqlalchemy.orm import relationship
@@ -32,7 +32,8 @@ class User(BaseModel):
     __tablename__ = "users"
 
     username = Column(String(50), nullable=False, unique=True)
-    email = Column(String(50), nullable=False, unique=True)
+    email = Column(String(255), nullable=False, unique=True) # 255 to accommodate long emails (RFC 5321)
+    pending_email = Column(String(255), nullable=True)
     password = Column(String(255), nullable=False)
     otp_code = Column(String(6), nullable=True)
     otp_expiry = Column(DateTime, nullable=True)
@@ -50,12 +51,21 @@ class User(BaseModel):
     last_login = Column(DateTime, default=lambda: datetime.now(), nullable=True)
     updated_at = Column(DateTime, default=lambda: datetime.now())
 
+    # Account security / lockout
+    failed_attempts = Column(Integer, default=0, nullable=False)
+    locked_until = Column(DateTime, nullable=True)
+
+    # Soft delete tombstone (account deletion)
+    is_deleted = Column(Boolean, default=False, nullable=False)
+    deleted_at = Column(DateTime, nullable=True)
+
     # ForeignKeys
     role_id = Column(Integer, ForeignKey("roles.id"), nullable=False)
 
     # one-to-many Relationships
     reset_tokens = relationship("ResetToken", backref="user")
     verification_tokens = relationship("VerificationToken", backref="user")
+    devices = relationship("UserDevice", backref="user")
 
     def __repr__(self):
         return f"<Username: {self.username}, Email: {self.email}>"
@@ -115,3 +125,36 @@ class VerificationToken(db.Model):
         """Set token expiration."""
         self.timestamp = datetime.now()
         self.expiry_date = self.timestamp + timedelta(minutes=minutes)
+
+
+class TokenBlocklist(db.Model):
+    """Revoked JWT entries (logout / refresh rotation / account deletion).
+
+    Keyed on the JWT `jti` claim. Mirrors the token-table convention
+    (Integer PK) used by ResetToken/VerificationToken.
+    """
+
+    __tablename__ = "token_blocklist"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    jti = Column(String(36), nullable=False, unique=True, index=True)
+    token_type = Column(String(10), nullable=False)  # "access" or "refresh"
+    created_at = Column(DateTime, default=lambda: datetime.now())
+    # When the original token would have naturally expired — safe to purge after this.
+    expires_at = Column(DateTime, nullable=False)
+
+    # ForeignKeys
+    user_id = Column(String(50), ForeignKey("users.id"), nullable=False, index=True)
+
+class UserDevice(BaseModel):
+    """A device/session fingerprint recorded at login for tracking."""
+
+    __tablename__ = "user_devices"
+
+    device_name = Column(String(120), nullable=True)
+    user_agent = Column(Text, nullable=True)
+    ip_address = Column(String(45), nullable=True)  # IPv6-capable
+    last_seen = Column(DateTime, default=lambda: datetime.now())
+
+    # ForeignKeys
+    user_id = Column(String(50), ForeignKey("users.id"), nullable=False, index=True)

@@ -92,13 +92,14 @@ The Second Brain Team
         
         self.send_email(subject, [user.email], body)
 
-    def send_email_verification(self, user: User, token: str):
+    def send_email_verification(self, user: User, token: str, recipient_email: Optional[str] = None):
         """
         Send an email verification link to the user.
 
         Args:
             user: User object
             token: Verification token string
+            recipient_email: Optional email address to send to instead of user.email
         """
         verification_url = f"{current_app.config.get('EMAIL_VERIFICATION_URL')}?token={token}"
 
@@ -117,7 +118,7 @@ Best regards,
 The Second Brain Team
 """
 
-        self.send_email(subject, [user.email], body)
+        self.send_email(subject, [recipient_email or user.email], body)
 
     def send_alert(self, user: User, alert_type: str, message: str):
         """

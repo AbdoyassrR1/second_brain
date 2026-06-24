@@ -57,7 +57,7 @@ def verified_user(db):
         verified_at=datetime.utcnow(),
         is_active=True,
     )
-    user.set_password("password123")
+    user.set_password("Password123")
     _db.session.add(user)
     _db.session.commit()
     return user
@@ -70,7 +70,7 @@ def auth_headers(client, verified_user):
         "/api/v1/auth/login",
         json={
             "email": verified_user.email,
-            "password": "password123",
+            "password": "Password123",
         },
     )
     

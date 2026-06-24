@@ -1,19 +1,52 @@
 #!/usr/bin/python3
 """Auth service for business logic."""
 
-from datetime import datetime, timedelta
+import re
 import secrets
-from flask import current_app
+from datetime import datetime, timedelta, timezone
+from flask import current_app, g, request
 from app.shared.exceptions import (
     ValidationError,
     UnauthorizedError,
     ConflictError,
     NotFoundError,
+    ForbiddenError,
 )
-from app.shared.logging.audit_log import log_registration, log_login_attempt, log_profile_update
+from app.shared.logging.audit_log import (
+    log_registration,
+    log_login_attempt,
+    log_profile_update,
+    log_logout,
+    log_auth_failure,
+    log_password_reset_requested,
+    log_password_reset_completed,
+    log_password_changed,
+    log_account_locked,
+    log_account_deleted,
+    log_device_login,
+)
 from app.extensions import db
-from .repository import UserRepository, RoleRepository, VerificationTokenRepository
+from .repository import (
+    UserRepository,
+    RoleRepository,
+    VerificationTokenRepository,
+    ResetTokenRepository,
+    TokenBlocklistRepository,
+    UserDeviceRepository,
+)
 from app.features.mail.service import MailService
+
+# ── Password-strength pattern: ≥8 chars, ≥1 uppercase, ≥1 lowercase, ≥1 digit ──
+_PASSWORD_STRENGTH_RE = re.compile(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$")
+
+
+def validate_password_strength(password):
+    """Raise ValidationError if the password does not meet strength rules."""
+    if not _PASSWORD_STRENGTH_RE.match(password):
+        raise ValidationError(
+            "Password must be at least 8 characters and contain at least "
+            "one uppercase letter, one lowercase letter, and one digit."
+        )
 
 
 class AuthService:
@@ -24,6 +57,11 @@ class AuthService:
         self.role_repo = RoleRepository()
         self.mail_service = MailService()
         self.verification_token_repo = VerificationTokenRepository()
+        self.reset_token_repo = ResetTokenRepository()
+        self.token_blocklist_repo = TokenBlocklistRepository()
+        self.device_repo = UserDeviceRepository()
+
+    # ── Registration ────────────────────────────────────────────────
 
     def register(self, username, email, password, phone_number, role="customer"):
         """Register a new user.
@@ -51,27 +89,39 @@ class AuthService:
         if self.user_repo.find_by_phone_number(phone_number):
             raise ConflictError("Phone number already exists")
 
+        validate_password_strength(password)
+
         # Get default role
         role_record = self.role_repo.find_by_name(role)
         if not role_record:
             raise NotFoundError(f"Role '{role}' not found")
-        
+
         # Create user
         user = self.user_repo.create(username, email, password, phone_number, role_record.id)
-        
+
         # Log registration audit event
         log_registration(user.id, username, email)
 
         # Send verification email after creating the account.
         self.send_email_verification(email)
-        
+
+        return user
+
+    # ── Email Verification ────────────────────────────────────────────
+
+    def _issue_verification_token(self, user, recipient_email=None):
+        """Create and send a verification token for a user."""
+        token = secrets.token_urlsafe(32)
+        expiry_minutes = current_app.config.get("EMAIL_VERIFICATION_TOKEN_EXPIRES_MINUTES", 30)
+        expiry_date = datetime.utcnow() + timedelta(minutes=expiry_minutes)
+
+        self.verification_token_repo.invalidate_user_tokens(user.id)
+        self.verification_token_repo.create(user.id, token, expiry_date)
+        self.mail_service.send_email_verification(user, token, recipient_email=recipient_email)
         return user
 
     def send_email_verification(self, email):
         """Send email verification for an existing user.
-
-        Args:
-            email: Unique email
 
         Returns:
             User object
@@ -87,15 +137,7 @@ class AuthService:
         if user.is_verified:
             raise ConflictError("Email is already verified")
 
-        token = secrets.token_urlsafe(32)
-        expiry_minutes = current_app.config.get("EMAIL_VERIFICATION_TOKEN_EXPIRES_MINUTES", 30)
-        expiry_date = datetime.utcnow() + timedelta(minutes=expiry_minutes)
-
-        self.verification_token_repo.invalidate_user_tokens(user.id)
-        self.verification_token_repo.create(user.id, token, expiry_date)
-        self.mail_service.send_email_verification(user, token)
-
-        return user
+        return self._issue_verification_token(user)
 
     def verify_email(self, token):
         """Verify a user's email address using a verification token."""
@@ -107,6 +149,10 @@ class AuthService:
         if not user:
             raise NotFoundError("User not found")
 
+        if user.pending_email:
+            user.email = user.pending_email
+            user.pending_email = None
+
         user.is_verified = True
         user.verified_at = datetime.utcnow()
         verification_token.is_used = True
@@ -114,22 +160,22 @@ class AuthService:
 
         return user
 
+    # ── Login (with lockout + device tracking) ───────────────────────
+
     def login(self, password, email=None, username=None):
         """Authenticate user and return user object.
 
-        Args:
-            password: Plain text password
-            email: User's email
-            username: User's username
+        Implements account lockout after ``MAX_FAILED_LOGIN_ATTEMPTS``
+        consecutive failures and records the login device.
 
         Returns:
             User object if authentication successful
 
         Raises:
-            UnauthorizedError: If credentials are invalid
+            UnauthorizedError: If credentials are invalid or account is locked
         """
-        from app.shared.metrics import user_logins_total
-        
+        from app.shared.metrics import user_logins_total, auth_failures_total
+
         identity = email or username
         if email:
             user = self.user_repo.find_by_email(email)
@@ -137,38 +183,200 @@ class AuthService:
             user = self.user_repo.find_by_username(username)
 
         if not user:
-            log_login_attempt(identity, False, reason="user_not_found")
+            log_auth_failure(identity, "user_not_found")
+            auth_failures_total.labels(reason="user_not_found").inc()
             user_logins_total.labels(success="false").inc()
             raise UnauthorizedError("Invalid email or password")
 
+        # ── Account lockout check ──
+        if user.locked_until and user.locked_until > datetime.utcnow():
+            log_auth_failure(identity, "account_locked")
+            auth_failures_total.labels(reason="account_locked").inc()
+            user_logins_total.labels(success="false").inc()
+            remaining = (user.locked_until - datetime.utcnow()).seconds
+            raise UnauthorizedError(
+                f"Account temporarily locked. Try again in {remaining} seconds."
+            )
+
         if not user.check_password(password):
+            failed = self.user_repo.increment_failed_attempts(user.id)
+            max_attempts = current_app.config.get("MAX_FAILED_LOGIN_ATTEMPTS", 5)
+
+            if failed >= max_attempts:
+                lockout_minutes = current_app.config.get("ACCOUNT_LOCKOUT_MINUTES", 15)
+                locked_until = datetime.utcnow() + timedelta(minutes=lockout_minutes)
+                self.user_repo.lock_account(user.id, locked_until)
+                log_account_locked(user.id, locked_until)
+                from app.shared.metrics import account_lockouts_total
+                account_lockouts_total.inc()
+
             log_login_attempt(identity, False, reason="invalid_password")
+            auth_failures_total.labels(reason="invalid_password").inc()
             user_logins_total.labels(success="false").inc()
             raise UnauthorizedError("Invalid email or password")
 
         if not user.is_verified:
             log_login_attempt(identity, False, reason="user_not_verified")
+            auth_failures_total.labels(reason="user_not_verified").inc()
             user_logins_total.labels(success="false").inc()
             raise UnauthorizedError("User account is not verified")
 
-        # Update last login
-        user.last_login = datetime.now()
+        # ── Successful login ──
+        self.user_repo.reset_failed_attempts(user.id)
+
+        user.last_login = datetime.utcnow()
         db.session.commit()
-        
-        # Log successful login
+
+        # Record device
+        self._capture_device(user.id)
+
         log_login_attempt(identity, True)
         user_logins_total.labels(success="true").inc()
-        
+
         return user
+
+    # ── Logout / Token revocation ─────────────────────────────────────
+
+    def revoke_token(self, jti, token_type, user_id, expires_at):
+        """Revoke a single token by its jti (logout / rotation)."""
+        self.token_blocklist_repo.create(jti, token_type, user_id, expires_at)
+        log_logout(user_id)
+
+    def revoke_all_tokens(self, user_id):
+        """Revoke all outstanding tokens for a user (logout-all / delete)."""
+        existing = self.token_blocklist_repo.revoke_user_tokens(user_id)
+        # We don't have a way to retroactively add new jtis we don't know about.
+        # The user will simply be unable to use previously-issued tokens.
+        log_logout(user_id)
+
+    # ── Refresh token rotation ─────────────────────────────────────────
+
+    def rotate_refresh_token(self, user_id, old_jti, old_expires_at):
+        """Revoke the old refresh token and return the user for new token minting."""
+        self.token_blocklist_repo.create(old_jti, "refresh", user_id, old_expires_at)
+        from app.shared.metrics import jwt_token_issued_total
+        jwt_token_issued_total.labels(token_type="refresh_rotated").inc()
+
+        user = self.user_repo.find_by_id(user_id)
+        if not user:
+            raise NotFoundError("User not found")
+        return user
+
+    # ── Password reset (forgot password) ─────────────────────────────
+
+    def request_password_reset(self, email):
+        """Request a password reset email.
+
+        Always returns ``None`` (success) to avoid user-enumeration.
+        If the email is unknown the request is silently ignored.
+        """
+        user = self.user_repo.find_by_email(email)
+        if not user:
+            # Silent ignore — no enumeration
+            return None
+
+        token = secrets.token_urlsafe(32)
+        expiry_minutes = current_app.config.get("PASSWORD_RESET_TOKEN_EXPIRES_MINUTES", 15)
+        expiry_date = datetime.utcnow() + timedelta(minutes=expiry_minutes)
+
+        self.reset_token_repo.invalidate_user_tokens(user.id)
+        self.reset_token_repo.create(user.id, token, expiry_date)
+        self.mail_service.send_password_reset_email(user, token)
+
+        log_password_reset_requested(user.id, email)
+        return None
+
+    def reset_password(self, token, new_password):
+        """Reset a user's password using a valid reset token.
+
+        Raises:
+            NotFoundError: If the token is invalid or expired.
+            ValidationError: If the new password is too weak.
+        """
+        validate_password_strength(new_password)
+
+        reset_token = self.reset_token_repo.find_active_by_token(token)
+        if not reset_token:
+            raise NotFoundError("Invalid or expired reset token")
+
+        user = reset_token.user
+        if not user or user.is_deleted:
+            raise NotFoundError("User not found")
+
+        user.set_password(new_password)
+        reset_token.is_used = True
+        # Unlock account and reset failed attempts so the user can log in.
+        user.failed_attempts = 0
+        user.locked_until = None
+        db.session.commit()
+
+        self.mail_service.send_password_changed_notification(user)
+        log_password_reset_completed(user.id)
+        from app.shared.metrics import password_resets_total
+        password_resets_total.inc()
+
+        return user
+
+    # ── Change password while logged in ──────────────────────────────
+
+    def change_password(self, user_id, current_password, new_password):
+        """Change a user's password given the current password.
+
+        Raises:
+            NotFoundError: If the user does not exist.
+            UnauthorizedError: If the current password is incorrect.
+            ValidationError: If the new password is too weak or same as current.
+        """
+        validate_password_strength(new_password)
+
+        user = self.user_repo.find_by_id(user_id)
+        if not user:
+            raise NotFoundError("User not found")
+
+        if not user.check_password(current_password):
+            raise UnauthorizedError("Current password is incorrect")
+
+        if user.check_password(new_password):
+            raise ValidationError("New password must be different from current password")
+
+        user.set_password(new_password)
+        db.session.commit()
+
+        # Force re-login by revoking all tokens.
+        self.revoke_all_tokens(user_id)
+
+        self.mail_service.send_password_changed_notification(user)
+        log_password_changed(user_id)
+
+        return user
+
+    def change_email(self, user_id, current_password, new_email):
+        """Change email while keeping the current email active until verified."""
+        user = self.user_repo.find_by_id(user_id)
+        if not user:
+            raise NotFoundError("User not found")
+
+        if not user.check_password(current_password):
+            raise UnauthorizedError("Current password is incorrect")
+
+        if new_email == user.email:
+            raise ValidationError("New email must be different from current email")
+
+        if self.user_repo.find_by_email(new_email) or self.user_repo.find_by_pending_email(new_email):
+            raise ConflictError("Email already exists")
+
+        user.pending_email = new_email
+        db.session.commit()
+
+        self._issue_verification_token(user, recipient_email=new_email)
+        log_profile_update(user_id, {"pending_email": new_email})
+
+        return user
+
+    # ── Profile / Account management ──────────────────────────────────
 
     def get_user_profile(self, user_id):
         """Get user profile by ID.
-
-        Args:
-            user_id: User ID
-
-        Returns:
-            User object
 
         Raises:
             NotFoundError: If user not found
@@ -181,37 +389,104 @@ class AuthService:
     def update_user_profile(self, user_id, **kwargs):
         """Update user profile fields.
 
-        Args:
-            user_id: User ID
-            **kwargs: Fields to update (username, email, password, etc.)
-
-        Returns:
-            Updated user object
+        Fields that are never allowed here: password, email, pending_email,
+        role_id, is_verified, is_deleted. Password changes go through
+        ``change_password``; email changes go through ``change_email``.
 
         Raises:
             NotFoundError: If user not found
-            ValidationError: If update is invalid
+            ConflictError: If username/email/phone already taken
         """
         user = self.user_repo.find_by_id(user_id)
         if not user:
             raise NotFoundError("User not found")
 
-        # Handle password updates
-        if "password" in kwargs:
-            password = kwargs.pop("password")
-            if len(password) < 8:
-                raise ValidationError("Password must be at least 8 characters")
-            user.set_password(password)
+        # Guard fields that must never be mutated through this path.
+        forbidden = {
+            "password",
+            "email",
+            "pending_email",
+            "role_id",
+            "is_verified",
+            "is_deleted",
+            "failed_attempts",
+            "locked_until",
+        }
+        for field in forbidden:
+            if field in kwargs:
+                if field in {"email", "pending_email"}:
+                    raise ForbiddenError("Email changes must use /me/change-email")
+                kwargs.pop(field, None)
 
-        # Update other fields
-        if "username" in kwargs:
+        # Username uniqueness
+        if "username" in kwargs and kwargs["username"] != user.username:
             if self.user_repo.find_by_username(kwargs["username"]):
                 raise ConflictError("Username already exists")
 
-        # Perform update
+        # Email uniqueness — when email changes, require re-verification.
+        email_changed = "email" in kwargs and kwargs["email"] != user.email
+        if email_changed:
+            if self.user_repo.find_by_email(kwargs["email"]):
+                raise ConflictError("Email already exists")
+
+        # Phone uniqueness
+        if "phone_number" in kwargs and kwargs["phone_number"] != user.phone_number:
+            if self.user_repo.find_by_phone_number(kwargs["phone_number"]):
+                raise ConflictError("Phone number already exists")
+
         updated_user = self.user_repo.update(user_id, **kwargs)
-        
-        # Log profile update audit event
         log_profile_update(user_id, kwargs)
-        
+
+        # If email changed, mark unverified and send new verification email.
+        if email_changed:
+            updated_user.is_verified = False
+            updated_user.verified_at = None
+            db.session.commit()
+            try:
+                self.send_email_verification(updated_user.email)
+            except Exception:
+                # Don't block the profile update if email sending fails.
+                pass
+
         return updated_user
+
+    def delete_account(self, user_id):
+        """Soft-delete the current user's account.
+
+        Revokes all tokens so the user is immediately logged out.
+        """
+        user = self.user_repo.find_by_id(user_id)
+        if not user:
+            raise NotFoundError("User not found")
+
+        self.user_repo.soft_delete(user_id)
+        self.revoke_all_tokens(user_id)
+        log_account_deleted(user_id)
+
+        return user
+
+    # ── Device tracking ──────────────────────────────────────────────
+
+    def list_devices(self, user_id):
+        """List all recorded devices for a user."""
+        return self.device_repo.find_by_user(user_id)
+
+    # ── Internal helpers ─────────────────────────────────────────────
+
+    def _capture_device(self, user_id):
+        """Record the caller's device info from the current request context."""
+        user_agent = request.headers.get("User-Agent", "") if request else ""
+        ip_address = request.remote_addr if request else None
+        # Best-effort device name from User-Agent; empty string is a valid key.
+        device_name = user_agent[:120] if user_agent else None
+        try:
+            self.device_repo.upsert(
+                user_id=user_id,
+                device_name=device_name,
+                user_agent=user_agent,
+                ip_address=ip_address,
+            )
+            log_device_login(user_id, device_name, ip_address)
+        except Exception:
+            # Device capture must never break a login.
+            pass

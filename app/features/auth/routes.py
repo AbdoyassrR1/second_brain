@@ -1,10 +1,18 @@
 #!/usr/bin/python3
 """Auth routes and endpoints."""
 
-from flask import Blueprint, request, jsonify, abort
-from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
-from marshmallow import ValidationError
-from app.shared.exceptions import AppError, ConflictError
+from datetime import datetime, timezone
+
+from flask import Blueprint, request, jsonify, current_app
+from flask_jwt_extended import (
+    create_access_token,
+    create_refresh_token,
+    jwt_required,
+    get_jwt_identity,
+    get_jwt,
+    decode_token,
+)
+
 from app.shared.decorators import require_json_body
 from .service import AuthService
 from .schema import (
@@ -13,151 +21,338 @@ from .schema import (
     UserProfileSchema,
     SendEmailVerificationSchema,
     VerifyEmailSchema,
+    ForgotPasswordSchema,
+    ResetPasswordSchema,
+    ChangePasswordSchema,
+    ChangeEmailSchema,
+    UpdateProfileSchema,
+    UserDeviceSchema,
 )
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/v1/auth")
+me_bp = Blueprint("me", __name__, url_prefix="/api/v1/me")
+
 auth_service = AuthService()
+
+# Schema instances (reuse across requests)
 registration_schema = UserRegistrationSchema()
 login_schema = UserLoginSchema()
 profile_schema = UserProfileSchema()
 send_verification_schema = SendEmailVerificationSchema()
 verify_email_schema = VerifyEmailSchema()
+forgot_password_schema = ForgotPasswordSchema()
+reset_password_schema = ResetPasswordSchema()
+change_password_schema = ChangePasswordSchema()
+change_email_schema = ChangeEmailSchema()
+update_profile_schema = UpdateProfileSchema()
+device_schema = UserDeviceSchema()
 
+
+def _issue_tokens(user, remember_me=False):
+    """Create an access + refresh token pair and record metrics."""
+    from app.shared.metrics import jwt_token_issued_total
+
+    access_token = create_access_token(identity=user)
+    refresh_delta_key = (
+        "JWT_REFRESH_TOKEN_REMEMBER_ME_EXPIRES"
+        if remember_me
+        else "JWT_REFRESH_TOKEN_EXPIRES"
+    )
+    refresh_token = create_refresh_token(
+        identity=user, expires_delta=current_app.config.get(refresh_delta_key)
+    )
+
+    jwt_token_issued_total.labels(token_type="access").inc()
+    jwt_token_issued_total.labels(token_type="refresh").inc()
+    return access_token, refresh_token
+
+
+# ─── Registration ────────────────────────────────────────────────────
 
 @auth_bp.route("/register", methods=["POST"])
 @require_json_body()
 def register(json_data):
     """Register a new user."""
-    try:
-        data = registration_schema.load(json_data)
+    data = registration_schema.load(json_data)
+    user = auth_service.register(**data)
+    return (
+        jsonify(
+            {
+                "status": "success",
+                "message": "User registered successfully",
+                "user": profile_schema.dump(user),
+            }
+        ),
+        201,
+    )
 
-        user = auth_service.register(**data)
+
+# ─── Login ───────────────────────────────────────────────────────────
+
+@auth_bp.route("/login", methods=["POST"])
+@require_json_body()
+def login(json_data):
+    """Login user with username/email and password."""
+    data = login_schema.load(json_data)
+    remember_me = data.pop("remember_me", False)
+
+    user = auth_service.login(**data)
+    access_token, refresh_token = _issue_tokens(user, remember_me=remember_me)
+
+    return (
+        jsonify(
+            {
+                "status": "success",
+                "message": "Login successful",
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "user": profile_schema.dump(user),
+            }
+        ),
+        200,
+    )
 
 
-        return (
-            jsonify(
-                {
-                    "status": "success",
-                    "message": "User registered successfully",
-                    "user": registration_schema.dump(user),
-                }
-            ),
-            201,
-        )
-    except AppError as e:
-        abort(e.status_code, description=e.message)
+# ─── Refresh ─────────────────────────────────────────────────────────
 
+@auth_bp.route("/refresh", methods=["POST"])
+@jwt_required(refresh=True)
+def refresh():
+    """Rotate the refresh token: revoke the old one, issue a new pair."""
+    user_id = get_jwt_identity()
+    refresh_claims = get_jwt()
+    refresh_jti = refresh_claims["jti"]
+    old_expires_at = datetime.fromtimestamp(
+        refresh_claims.get("exp", 0), tz=timezone.utc
+    )
+
+    user = auth_service.rotate_refresh_token(user_id, refresh_jti, old_expires_at)
+    access_token, new_refresh_token = _issue_tokens(user)
+
+    return (
+        jsonify(
+            {
+                "status": "success",
+                "access_token": access_token,
+                "refresh_token": new_refresh_token,
+            }
+        ),
+        200,
+    )
+
+
+# ─── Logout ──────────────────────────────────────────────────────────
+
+@auth_bp.route("/logout", methods=["POST"])
+@jwt_required()
+def logout():
+    """Revoke the current access token (effectively logging the user out)."""
+    user_id = get_jwt_identity()
+    token_data = get_jwt()
+    jti = token_data["jti"]
+    expires_at = datetime.fromtimestamp(token_data.get("exp", 0), tz=timezone.utc)
+
+    auth_service.revoke_token(jti, "access", user_id, expires_at)
+    return jsonify({"status": "success", "message": "Logout successful"}), 200
+
+
+@auth_bp.route("/logout-all", methods=["POST"])
+@jwt_required()
+def logout_all():
+    """Revoke all tokens for the current user."""
+    user_id = get_jwt_identity()
+    auth_service.revoke_all_tokens(user_id)
+    return jsonify({"status": "success", "message": "Logged out from all devices"}), 200
+
+
+# ─── Email Verification ──────────────────────────────────────────────
 
 @auth_bp.route("/send-email-verification", methods=["POST"])
 @require_json_body()
 def send_email_verification(json_data):
     """Send an email verification link to a user."""
-    try:
-        data = send_verification_schema.load(json_data)
-        user = auth_service.send_email_verification(data["email"])
-        return (
-            jsonify(
-                {
-                    "status": "success",
-                    "message": "Verification email sent successfully",
-                    "user": profile_schema.dump(user),
-                }
-            ),
-            200,
-        )
-    except AppError as e:
-        return jsonify({"status": "error", "message": e.message}), e.status_code
-    except ValidationError as e:
-        return jsonify({"status": "error", "message": e.messages}), 400
+    data = send_verification_schema.load(json_data)
+    user = auth_service.send_email_verification(data["email"])
+    return (
+        jsonify(
+            {
+                "status": "success",
+                "message": "Verification email sent successfully",
+                "user": profile_schema.dump(user),
+            }
+        ),
+        200,
+    )
 
 
 @auth_bp.route("/verify-email", methods=["GET", "POST"])
 def verify_email():
     """Verify a user's email using a token."""
-    try:
-        if request.method == "GET":
-            data = verify_email_schema.load({"token": request.args.get("token")})
-        else:
-            data = verify_email_schema.load(request.get_json(silent=True) or {})
-        user = auth_service.verify_email(data["token"])
-        return (
-            jsonify(
-                {
-                    "status": "success",
-                    "message": "Email verified successfully",
-                    "user": profile_schema.dump(user),
-                }
-            ),
-            200,
-        )
-    except AppError as e:
-        return jsonify({"status": "error", "message": e.message}), e.status_code
-    except ValidationError as e:
-        return jsonify({"status": "error", "message": e.messages}), 400
+    if request.method == "GET":
+        data = verify_email_schema.load({"token": request.args.get("token")})
+    else:
+        # Don't enforce JSON content-type for this convenience endpoint.
+        data = verify_email_schema.load(request.get_json(silent=True) or {})
+
+    user = auth_service.verify_email(data["token"])
+    return (
+        jsonify(
+            {
+                "status": "success",
+                "message": "Email verified successfully",
+                "user": profile_schema.dump(user),
+            }
+        ),
+        200,
+    )
 
 
-@auth_bp.route("/login", methods=["POST"])
+# ─── Password Management ─────────────────────────────────────────────
+
+@auth_bp.route("/forgot-password", methods=["POST"])
 @require_json_body()
-def login(json_data):
-    """Login user with username and password."""
-    try:
-        data = login_schema.load(json_data)
+def forgot_password(json_data):
+    """Request a password reset email. Always returns 200 (no enumeration)."""
+    data = forgot_password_schema.load(json_data)
+    auth_service.request_password_reset(data["email"])
+    return (
+        jsonify(
+            {
+                "status": "success",
+                "message": "If that email exists, a reset link has been sent.",
+            }
+        ),
+        200,
+    )
 
-        user = auth_service.login(**data)
 
-        # Generate tokens
-        access_token = create_access_token(identity=user)
-        refresh_token = create_refresh_token(identity=user)
+@auth_bp.route("/reset-password", methods=["POST"])
+@require_json_body()
+def reset_password(json_data):
+    """Reset password using a token from the forgot-password email."""
+    data = reset_password_schema.load(json_data)
+    user = auth_service.reset_password(data["token"], data["new_password"])
+    return (
+        jsonify(
+            {
+                "status": "success",
+                "message": "Password reset successfully",
+                "user": profile_schema.dump(user),
+            }
+        ),
+        200,
+    )
 
-        return (
-            jsonify(
-                {
-                    "status": "success",
-                    "message": "Login successful",
-                    "access_token": access_token,
-                    "refresh_token": refresh_token,
-                    "user": profile_schema.dump(user),
-                }
-            ),
-            200,
-        )
-    except AppError as e:
-        return jsonify({"status": "error", "message": e.message}), e.status_code
-    except ValidationError as e:
-        return jsonify({"status": "error", "message": e.messages}), 400
-    except Exception:
-        raise
 
+# ─── Profile (legacy endpoints, kept for backward compatibility) ─────
 
 @auth_bp.route("/profile", methods=["GET"])
 @jwt_required()
 def get_profile():
     """Get current user profile."""
-    try:
-        user_id = get_jwt_identity()
-        user = auth_service.get_user_profile(user_id)
-        return jsonify({"status": "success", "user": profile_schema.dump(user)}), 200
-    except AppError as e:
-        return jsonify({"status": "error", "message": e.message}), e.status_code
-    except ValidationError as e:
-        return jsonify({"status": "error", "message": e.messages}), 400
-    except Exception:
-        raise
+    user_id = get_jwt_identity()
+    user = auth_service.get_user_profile(user_id)
+    return jsonify({"status": "success", "user": profile_schema.dump(user)}), 200
 
 
 @auth_bp.route("/profile", methods=["PUT"])
 @jwt_required()
 @require_json_body()
-def update_profile(json_data):
-    """Update current user profile."""
-    try:
-        user_id = get_jwt_identity()
+def update_profile_legacy(json_data):
+    """Legacy PUT /profile — delegates to the same logic as PATCH /me."""
+    user_id = get_jwt_identity()
+    user = auth_service.update_user_profile(user_id, **json_data)
+    return jsonify({"status": "success", "user": profile_schema.dump(user)}), 200
 
-        user = auth_service.update_user_profile(user_id, **json_data)
-        return jsonify({"status": "success", "user": profile_schema.dump(user)}), 200
-    except AppError as e:
-        return jsonify({"status": "error", "message": e.message}), e.status_code
-    except ValidationError as e:
-        return jsonify({"status": "error", "message": e.messages}), 400
-    except Exception:
-        raise
+
+# ─── Account Management (/me) ────────────────────────────────────────
+
+@me_bp.route("", methods=["GET"])
+@jwt_required()
+def get_me():
+    """Get the current user's account."""
+    user_id = get_jwt_identity()
+    user = auth_service.get_user_profile(user_id)
+    return jsonify({"status": "success", "user": profile_schema.dump(user)}), 200
+
+
+@me_bp.route("", methods=["PATCH"])
+@jwt_required()
+@require_json_body()
+def update_me(json_data):
+    """Update the current user's profile (validated fields only)."""
+    user_id = get_jwt_identity()
+    data = update_profile_schema.load(json_data)
+    user = auth_service.update_user_profile(user_id, **data)
+    return jsonify({"status": "success", "user": profile_schema.dump(user)}), 200
+
+
+@me_bp.route("", methods=["DELETE"])
+@jwt_required()
+def delete_me():
+    """Soft-delete the current user's account."""
+    user_id = get_jwt_identity()
+    auth_service.delete_account(user_id)
+    return jsonify({"status": "success", "message": "Account deleted"}), 200
+
+
+@me_bp.route("/devices", methods=["GET"])
+@jwt_required()
+def list_devices():
+    """List all recorded devices/sessions for the current user."""
+    user_id = get_jwt_identity()
+    devices = auth_service.list_devices(user_id)
+    return (
+        jsonify(
+            {
+                "status": "success",
+                "devices": device_schema.dump(devices, many=True),
+                "count": len(devices),
+            }
+        ),
+        200,
+    )
+
+
+@me_bp.route("/change-password", methods=["POST"])
+@jwt_required()
+@require_json_body()
+def change_password(json_data):
+    """Change password while logged in (requires current password)."""
+    data = change_password_schema.load(json_data)
+    user_id = get_jwt_identity()
+    user = auth_service.change_password(
+        user_id, data["current_password"], data["new_password"]
+    )
+    return (
+        jsonify(
+            {
+                "status": "success",
+                "message": "Password changed successfully. Please log in again.",
+                "user": profile_schema.dump(user),
+            }
+        ),
+        200,
+    )
+
+
+@me_bp.route("/change-email", methods=["POST"])
+@jwt_required()
+@require_json_body()
+def change_email(json_data):
+    """Change email while logged in and send verification to the new address."""
+    data = change_email_schema.load(json_data)
+    user_id = get_jwt_identity()
+    user = auth_service.change_email(
+        user_id, data["current_password"], data["new_email"]
+    )
+    return (
+        jsonify(
+            {
+                "status": "success",
+                "message": "Verification email sent to the new address.",
+                "user": profile_schema.dump(user),
+            }
+        ),
+        200,
+    )

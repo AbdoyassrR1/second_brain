@@ -113,3 +113,43 @@ def log_reminder_created(user_id, reminder_id, task_id):
 def log_auth_failure(email, reason):
     """Log authentication failure."""
     log_audit_event("AUTH_FAILURE", user_id=email, success=False, details={"reason": reason})
+
+
+def log_password_reset_requested(user_id, email):
+    """Log password reset request."""
+    log_audit_event("PASSWORD_RESET_REQUESTED", user_id=user_id, success=True, details={"email": email})
+
+
+def log_password_reset_completed(user_id):
+    """Log successful password reset."""
+    log_audit_event("PASSWORD_RESET_COMPLETED", user_id=user_id, success=True)
+
+
+def log_password_changed(user_id):
+    """Log password change while logged in."""
+    log_audit_event("PASSWORD_CHANGED", user_id=user_id, success=True)
+
+
+def log_account_locked(user_id, locked_until):
+    """Log account lockout after too many failed attempts."""
+    log_audit_event(
+        "ACCOUNT_LOCKED",
+        user_id=user_id,
+        success=False,
+        details={"locked_until": locked_until.isoformat() if locked_until else None},
+    )
+
+
+def log_account_deleted(user_id):
+    """Log account deletion."""
+    log_audit_event("ACCOUNT_DELETED", user_id=user_id, success=True)
+
+
+def log_device_login(user_id, device_name, ip_address):
+    """Log device/session recorded at login."""
+    log_audit_event(
+        "DEVICE_LOGIN",
+        user_id=user_id,
+        success=True,
+        details={"device_name": device_name, "ip_address": ip_address},
+    )

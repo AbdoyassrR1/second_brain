@@ -16,6 +16,12 @@ from .base import _error_response
 def register_jwt_callbacks(jwt):
     """Register Flask-JWT-Extended callbacks for consistent JSON errors."""
 
+    @jwt.token_in_blocklist_loader
+    def check_if_token_revoked(jwt_header, jwt_payload):
+        """Return True when the token's jti is in the blocklist (logout / rotation)."""
+        from app.features.auth.repository import TokenBlocklistRepository
+        return TokenBlocklistRepository.is_revoked(jwt_payload["jti"])
+
     @jwt.unauthorized_loader
     def unauthorized_loader(reason):
         current_app.logger.warning(

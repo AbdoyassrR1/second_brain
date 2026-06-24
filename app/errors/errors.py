@@ -17,6 +17,19 @@ def register_error_handlers(app):
 
     @app.errorhandler(Exception)
     def unhandled_exception(error):
+        """Catch-all for unhandled exceptions.
+
+        Custom AppError subclasses are rendered with their structured
+        message and status code.  Everything else is logged and returned
+        as a generic 500.
+        """
+        from app.shared.exceptions import AppError
+
+        if isinstance(error, AppError):
+            error_code = error.__class__.__name__.replace("Error", "").upper()
+            return _error_response(error.message, error_code, error.status_code)
+
+        # Truly unexpected exception — log with traceback and return 500.
         request_id = g.get("request_id", "unknown")
         user_id = g.get("user_id", None)
 
@@ -35,5 +48,5 @@ def register_error_handlers(app):
         return _error_response(
             "Internal server error",
             "INTERNAL_ERROR",
-            500
+            500,
         )

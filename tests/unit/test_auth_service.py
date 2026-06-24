@@ -2,8 +2,14 @@
 """Tests for auth service business logic."""
 
 import pytest
-from app.features.auth.service import AuthService
-from app.shared.exceptions import ValidationError, ConflictError, UnauthorizedError
+from app.features.auth.service import AuthService, validate_password_strength
+from app.shared.exceptions import (
+    ValidationError,
+    ConflictError,
+    UnauthorizedError,
+    NotFoundError,
+)
+from app.features.auth.repository import ResetTokenRepository
 
 
 class TestAuthService:
@@ -15,13 +21,12 @@ class TestAuthService:
         user = service.register(
             username="servicetest",
             email="service@test.com",
-            password="password123",
+            password="Password123",
             phone_number="5555555555",
         )
-        
+
         assert user is not None
         assert user.username == "servicetest"
-
 
     def test_register_duplicate_username(self, db):
         """Test registration rejects duplicate username."""
@@ -29,28 +34,28 @@ class TestAuthService:
         service.register(
             username="existing",
             email="first@test.com",
-            password="password123",
+            password="Password123",
             phone_number="1111111111",
         )
-        
+
         with pytest.raises(ConflictError):
             service.register(
                 username="existing",
                 email="second@test.com",
-                password="password123",
+                password="Password123",
                 phone_number="2222222222",
             )
 
     def test_login_success(self, db, verified_user):
         """Test successful login."""
         service = AuthService()
-        user = service.login(username=verified_user.username, password="password123")
+        user = service.login(username=verified_user.username, password="Password123")
         assert user.username == verified_user.username
 
     def test_login_wrong_password(self, db, verified_user):
-"""Test login with wrong password."""                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
+        """Test login with wrong password."""
         service = AuthService()
-        
+
         with pytest.raises(UnauthorizedError):
             service.login(username=verified_user.username, password="wrongpassword")
 
@@ -60,15 +65,15 @@ class TestAuthService:
         service.register(
             username="verifyme",
             email="verify@example.com",
-            password="password123",
-phone_number="7777777777",                                                                                                                                                                                                                                                                                                                                                                                                                                              
+            password="Password123",
+            phone_number="7777777777",
         )
 
         captured = {}
 
         def fake_send_email_verification(user, token):
             captured["email"] = user.email
-            captured["token"] = token                                                                                                                                                                                               
+            captured["token"] = token
 
         monkeypatch.setattr(service.mail_service, "send_email_verification", fake_send_email_verification)
 
@@ -80,3 +85,218 @@ phone_number="7777777777",
         user = service.verify_email(captured["token"])
         assert user.is_verified is True
 
+
+class TestPasswordStrength:
+    """Test password-strength validation (defense in depth)."""
+
+    def test_valid_password_passes(self):
+        """A strong password does not raise."""
+        validate_password_strength("Password123")  # should not raise
+
+    def test_short_password_rejected(self):
+        with pytest.raises(ValidationError):
+            validate_password_strength("Short1")
+
+    def test_no_uppercase_rejected(self):
+        with pytest.raises(ValidationError):
+            validate_password_strength("password123")
+
+    def test_no_digit_rejected(self):
+        with pytest.raises(ValidationError):
+            validate_password_strength("Passwordxxx")
+
+    def test_no_lowercase_rejected(self):
+        with pytest.raises(ValidationError):
+            validate_password_strength("PASSWORD123")
+
+    def test_register_rejects_weak_password(self, db):
+        """Service-layer register also enforces strength."""
+        service = AuthService()
+        with pytest.raises(ValidationError):
+            service.register(
+                username="weakpw",
+                email="weakpw@test.com",
+                password="password123",  # no uppercase
+                phone_number="9999999999",
+            )
+
+
+class TestAccountLockout:
+    """Test login account lockout after too many failed attempts."""
+
+    def test_lockout_after_max_failed_attempts(self, db, verified_user):
+        """Account locks after MAX_FAILED_LOGIN_ATTEMPTS wrong passwords."""
+        service = AuthService()
+        max_attempts = 3  # TestingConfig sets this to 3
+
+        # Exhaust failed attempts
+        for _ in range(max_attempts):
+            with pytest.raises(UnauthorizedError):
+                service.login(username=verified_user.username, password="wrongpw")
+
+        # User should now be locked
+        verified_user = service.user_repo.find_by_username(verified_user.username)
+        assert verified_user.locked_until is not None
+
+    def test_locked_account_rejected(self, db, verified_user):
+        """Locked account returns 401 even with correct password."""
+        service = AuthService()
+        # Manually lock the user
+        from datetime import datetime, timedelta
+        service.user_repo.lock_account(
+            verified_user.id,
+            datetime.utcnow() + timedelta(minutes=5),
+        )
+
+        with pytest.raises(UnauthorizedError) as exc_info:
+            service.login(username=verified_user.username, password="Password123")
+        assert "locked" in str(exc_info.value).lower()
+
+    def test_successful_login_resets_failed_attempts(self, db, verified_user):
+        """One failed attempt followed by success resets the counter."""
+        service = AuthService()
+
+        # One failure
+        with pytest.raises(UnauthorizedError):
+            service.login(username=verified_user.username, password="wrongpw")
+
+        # Successful login resets counter
+        user = service.login(username=verified_user.username, password="Password123")
+        assert user.failed_attempts == 0
+        assert user.locked_until is None
+
+
+class TestPasswordReset:
+    """Test password reset flow (forgot + reset)."""
+
+    def test_request_password_reset_sends_email(self, db, verified_user, monkeypatch):
+        """Request password reset creates a token and sends email."""
+        service = AuthService()
+
+        captured = {}
+
+        def fake_send_reset(user, token):
+            captured["token"] = token
+
+        monkeypatch.setattr(service.mail_service, "send_password_reset_email", fake_send_reset)
+        service.request_password_reset(verified_user.email)
+
+        assert "token" in captured
+        # Token should exist in the DB
+        token_record = ResetTokenRepository.find_active_by_token(captured["token"])
+        assert token_record is not None
+        assert token_record.user_id == verified_user.id
+
+    def test_request_password_reset_silent_for_unknown_email(self, db):
+        """Forgot-password returns None silently for unknown emails."""
+        service = AuthService()
+        result = service.request_password_reset("nobody@example.com")
+        assert result is None
+
+    def test_reset_password_with_valid_token(self, db, verified_user, monkeypatch):
+        """Reset password with a valid token changes the password."""
+        service = AuthService()
+
+        # Request reset
+        captured = {}
+        monkeypatch.setattr(service.mail_service, "send_password_reset_email", lambda u, t: captured.update(token=t))
+        service.request_password_reset(verified_user.email)
+        token = captured["token"]
+
+        # Reset with valid token
+        user = service.reset_password(token, "NewPassword456")
+        assert user.check_password("NewPassword456")
+
+    def test_reset_password_invalid_token(self, db):
+        """Reset password with invalid token raises NotFoundError."""
+        service = AuthService()
+        with pytest.raises(NotFoundError):
+            service.reset_password("invalid-token", "NewPassword456")
+
+    def test_reset_password_weak_rejected(self, db, verified_user, monkeypatch):
+        """Reset password with weak password raises ValidationError."""
+        service = AuthService()
+        captured = {}
+        monkeypatch.setattr(service.mail_service, "send_password_reset_email", lambda u, t: captured.update(token=t))
+        service.request_password_reset(verified_user.email)
+
+        with pytest.raises(ValidationError):
+            service.reset_password(captured["token"], "weak")
+
+    def test_reset_unlocks_account(self, db, verified_user, monkeypatch):
+        """Resetting password unlocks a locked account."""
+        service = AuthService()
+
+        # Lock the account
+        from datetime import datetime, timedelta
+        service.user_repo.lock_account(
+            verified_user.id, datetime.utcnow() + timedelta(minutes=10),
+        )
+        service.user_repo.increment_failed_attempts(verified_user.id)
+
+        # Reset password
+        captured = {}
+        monkeypatch.setattr(service.mail_service, "send_password_reset_email", lambda u, t: captured.update(token=t))
+        monkeypatch.setattr(service.mail_service, "send_password_changed_notification", lambda u: None)
+        service.request_password_reset(verified_user.email)
+        service.reset_password(captured["token"], "NewPassword456")
+
+        # Account should be unlocked
+        user = service.user_repo.find_by_id(verified_user.id)
+        assert user.locked_until is None
+        assert user.failed_attempts == 0
+
+
+class TestChangePassword:
+    """Test password change while logged in."""
+
+    def test_change_password_success(self, db, verified_user, monkeypatch):
+        """Change password with correct current password works."""
+        service = AuthService()
+        monkeypatch.setattr(service.mail_service, "send_password_changed_notification", lambda u: None)
+        user = service.change_password(verified_user.id, "Password123", "NewPassword456")
+        assert user.check_password("NewPassword456")
+
+    def test_change_password_wrong_current(self, db, verified_user):
+        """Change password with wrong current password raises UnauthorizedError."""
+        service = AuthService()
+        with pytest.raises(UnauthorizedError):
+            service.change_password(verified_user.id, "WrongPassword", "NewPassword456")
+
+    def test_change_password_same_as_current(self, db, verified_user):
+        """Change password to the same value raises ValidationError."""
+        service = AuthService()
+        with pytest.raises(ValidationError):
+            service.change_password(verified_user.id, "Password123", "Password123")
+
+    def test_change_password_weak_new(self, db, verified_user):
+        """Change password with weak new password raises ValidationError."""
+        service = AuthService()
+        with pytest.raises(ValidationError):
+            service.change_password(verified_user.id, "Password123", "weak")
+
+
+class TestAccountDeletion:
+    """Test soft-delete of accounts."""
+
+    def test_delete_account_soft_deletes(self, db, verified_user):
+        """Delete account sets is_deleted=True."""
+        service = AuthService()
+        service.delete_account(verified_user.id)
+
+        # Should not be findable normally
+        user = service.user_repo.find_by_id(verified_user.id)
+        assert user is None
+
+        # Should be findable with include_deleted
+        user = service.user_repo.find_by_id(verified_user.id, include_deleted=True)
+        assert user.is_deleted is True
+        assert user.deleted_at is not None
+
+    def test_deleted_user_cannot_login(self, db, verified_user):
+        """Deleted user cannot log in."""
+        service = AuthService()
+        service.delete_account(verified_user.id)
+
+        with pytest.raises(UnauthorizedError):
+            service.login(username=verified_user.username, password="Password123")
