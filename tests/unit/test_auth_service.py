@@ -2,6 +2,9 @@
 """Tests for auth service business logic."""
 
 import pytest
+from datetime import timedelta
+
+from app.extensions import db as _db
 from app.features.auth.service import AuthService, validate_password_strength
 from app.shared.exceptions import (
     ValidationError,
@@ -52,6 +55,63 @@ class TestAuthService:
         user = service.login(username=verified_user.username, password="Password123")
         assert user.username == verified_user.username
 
+    def test_login_with_2fa_returns_pending_token(self, db, verified_user, monkeypatch):
+        """Test login returns a 2FA pending token when enabled."""
+        service = AuthService()
+        verified_user.two_factor_enabled = True
+        _db.session.commit()
+
+        captured = {}
+
+        def fake_send_otp_email(user, otp_code):
+            captured["email"] = user.email
+            captured["otp_code"] = otp_code
+
+        monkeypatch.setattr(service.mail_service, "send_otp_email", fake_send_otp_email)
+
+        result = service.login(username=verified_user.username, password="Password123")
+
+        assert result["status"] == "2fa_required"
+        assert result["pending_token"]
+        assert captured["email"] == verified_user.email
+        assert captured["otp_code"]
+
+    def test_verify_otp_success_clears_code(self, db, verified_user):
+        """Test OTP verification clears stored code and expiry."""
+        service = AuthService()
+        verified_user.two_factor_enabled = True
+        verified_user.generate_otp()
+        _db.session.commit()
+
+        user = service.verify_otp(verified_user.id, verified_user.otp_code)
+
+        assert user.id == verified_user.id
+        assert user.otp_code is None
+        assert user.otp_expiry is None
+
+    def test_verify_otp_rejects_invalid_code(self, db, verified_user):
+        """Test invalid OTP is rejected."""
+        service = AuthService()
+        verified_user.two_factor_enabled = True
+        verified_user.generate_otp()
+        _db.session.commit()
+
+        with pytest.raises(UnauthorizedError):
+            service.verify_otp(verified_user.id, "000000")
+
+    def test_enable_and_disable_2fa(self, db, verified_user):
+        """Test enabling and disabling 2FA updates state and revokes tokens."""
+        service = AuthService()
+        starting_version = verified_user.token_version
+
+        enabled = service.enable_2fa(verified_user.id, "Password123")
+        assert enabled.two_factor_enabled is True
+        assert enabled.token_version == starting_version + 1
+
+        disabled = service.disable_2fa(verified_user.id, "Password123")
+        assert disabled.two_factor_enabled is False
+        assert disabled.token_version == starting_version + 2
+
     def test_login_wrong_password(self, db, verified_user):
         """Test login with wrong password."""
         service = AuthService()
@@ -71,7 +131,7 @@ class TestAuthService:
 
         captured = {}
 
-        def fake_send_email_verification(user, token):
+        def fake_send_email_verification(user, token, recipient_email=None):
             captured["email"] = user.email
             captured["token"] = token
 

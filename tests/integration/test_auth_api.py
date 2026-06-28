@@ -177,6 +177,88 @@ class TestAuthLogin:
 
         assert response.status_code == 401
 
+    def test_login_with_2fa_returns_pending_token(self, client, db, verified_user, monkeypatch):
+        """Test login returns a pending token when 2FA is enabled."""
+        from app.extensions import db as _db
+
+        verified_user.two_factor_enabled = True
+        _db.session.commit()
+
+        monkeypatch.setattr(
+            "app.features.auth.routes.auth_service.mail_service.send_otp_email",
+            lambda user, otp_code: None,
+        )
+
+        response = client.post(
+            "/api/v1/auth/login",
+            json={"username": verified_user.username, "password": "Password123"},
+        )
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["status"] == "2fa_required"
+        assert data["pending_token"]
+
+    def test_verify_otp_flow_issues_tokens(self, client, db, verified_user, monkeypatch):
+        """Test the full 2FA login flow returns normal tokens after OTP verification."""
+        from app.extensions import db as _db
+        from app.features.auth.models import User
+
+        verified_user.two_factor_enabled = True
+        _db.session.commit()
+
+        monkeypatch.setattr(
+            "app.features.auth.routes.auth_service.mail_service.send_otp_email",
+            lambda user, otp_code: None,
+        )
+
+        login_response = client.post(
+            "/api/v1/auth/login",
+            json={"email": verified_user.email, "password": "Password123"},
+        )
+        assert login_response.status_code == 200
+        login_data = login_response.get_json()
+        assert login_data["status"] == "2fa_required"
+
+        user = _db.session.query(User).filter_by(id=verified_user.id).first()
+        otp_code = user.otp_code
+
+        response = client.post(
+            "/api/v1/auth/verify-otp",
+            json={"pending_token": login_data["pending_token"], "otp_code": otp_code},
+        )
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["status"] == "success"
+        assert "access_token" in data
+        assert "refresh_token" in data
+
+    def test_pending_token_is_rejected_on_protected_route(self, client, db, verified_user, monkeypatch):
+        """Test a pending 2FA token cannot access normal protected routes."""
+        from app.extensions import db as _db
+
+        verified_user.two_factor_enabled = True
+        _db.session.commit()
+
+        monkeypatch.setattr(
+            "app.features.auth.routes.auth_service.mail_service.send_otp_email",
+            lambda user, otp_code: None,
+        )
+
+        login_response = client.post(
+            "/api/v1/auth/login",
+            json={"email": verified_user.email, "password": "Password123"},
+        )
+        pending_token = login_response.get_json()["pending_token"]
+
+        response = client.get(
+            "/api/v1/me",
+            headers={"Authorization": f"Bearer {pending_token}"},
+        )
+
+        assert response.status_code == 401
+
 
 class TestUserProfile:
     """Test user profile endpoints."""
@@ -184,7 +266,7 @@ class TestUserProfile:
     def test_get_profile_success(self, client, db, auth_headers):
         """Test getting current user profile."""
         headers, user_id = auth_headers
-        response = client.get("/api/v1/auth/profile", headers=headers)
+        response = client.get("/api/v1/me", headers=headers)
 
         assert response.status_code == 200
         data = response.get_json()
@@ -193,7 +275,7 @@ class TestUserProfile:
 
     def test_get_profile_unauthorized(self, client, db):
         """Test getting profile without authentication."""
-        response = client.get("/api/v1/auth/profile")
+        response = client.get("/api/v1/me")
 
         assert response.status_code == 401
 
@@ -272,7 +354,7 @@ class TestLogout:
         client.post("/api/v1/auth/logout", headers=headers)
 
         # The revoked token should no longer work
-        response = client.get("/api/v1/auth/profile", headers=headers)
+        response = client.get("/api/v1/me", headers=headers)
         assert response.status_code == 401
 
     def test_logout_all(self, client, db, auth_headers):

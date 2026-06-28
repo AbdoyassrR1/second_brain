@@ -4,6 +4,7 @@
 from datetime import datetime, timezone
 
 from flask import Blueprint, request, jsonify, current_app
+from app.extensions import limiter
 from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
@@ -27,6 +28,9 @@ from .schema import (
     ChangeEmailSchema,
     UpdateProfileSchema,
     UserDeviceSchema,
+    Enable2FASchema,
+    Disable2FASchema,
+    VerifyOTPSchema,
 )
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/v1/auth")
@@ -46,20 +50,35 @@ change_password_schema = ChangePasswordSchema()
 change_email_schema = ChangeEmailSchema()
 update_profile_schema = UpdateProfileSchema()
 device_schema = UserDeviceSchema()
+enable_2fa_schema = Enable2FASchema()
+disable_2fa_schema = Disable2FASchema()
+verify_otp_schema = VerifyOTPSchema()
 
 
 def _issue_tokens(user, remember_me=False):
-    """Create an access + refresh token pair and record metrics."""
+    """Create an access + refresh token pair and record metrics.
+
+    Both tokens carry the user's ``token_version`` as a claim so that a version
+    bump (logout-all / password change / account deletion) retroactively
+    revokes every previously-issued token.
+    """
     from app.shared.metrics import jwt_token_issued_total
 
-    access_token = create_access_token(identity=user)
+    extra_claims = {
+        "role": user.role.name if user.role else None,
+        "ver": user.token_version,
+        "2fa_pending": False,
+    }
+    access_token = create_access_token(identity=user, additional_claims=extra_claims)
     refresh_delta_key = (
         "JWT_REFRESH_TOKEN_REMEMBER_ME_EXPIRES"
         if remember_me
         else "JWT_REFRESH_TOKEN_EXPIRES"
     )
     refresh_token = create_refresh_token(
-        identity=user, expires_delta=current_app.config.get(refresh_delta_key)
+        identity=user,
+        expires_delta=current_app.config.get(refresh_delta_key),
+        additional_claims=extra_claims,
     )
 
     jwt_token_issued_total.labels(token_type="access").inc()
@@ -70,6 +89,7 @@ def _issue_tokens(user, remember_me=False):
 # ─── Registration ────────────────────────────────────────────────────
 
 @auth_bp.route("/register", methods=["POST"])
+@limiter.limit(lambda: current_app.config.get("AUTH_RATE_LIMIT", "5 per minute"))
 @require_json_body()
 def register(json_data):
     """Register a new user."""
@@ -90,13 +110,20 @@ def register(json_data):
 # ─── Login ───────────────────────────────────────────────────────────
 
 @auth_bp.route("/login", methods=["POST"])
+@limiter.limit(lambda: current_app.config.get("AUTH_RATE_LIMIT", "5 per minute"))
 @require_json_body()
 def login(json_data):
     """Login user with username/email and password."""
     data = login_schema.load(json_data)
     remember_me = data.pop("remember_me", False)
 
-    user = auth_service.login(**data)
+    auth_result = auth_service.login(**data)
+
+    if isinstance(auth_result, dict) and auth_result.get("status") == "2fa_required":
+        return jsonify(auth_result), 200
+
+    user = auth_result
+    
     access_token, refresh_token = _issue_tokens(user, remember_me=remember_me)
 
     return (
@@ -177,8 +204,7 @@ def send_email_verification(json_data):
         jsonify(
             {
                 "status": "success",
-                "message": "Verification email sent successfully",
-                "user": profile_schema.dump(user),
+                "message": "If that email exists, a verification email has been sent.",
             }
         ),
         200,
@@ -210,6 +236,7 @@ def verify_email():
 # ─── Password Management ─────────────────────────────────────────────
 
 @auth_bp.route("/forgot-password", methods=["POST"])
+@limiter.limit(lambda: current_app.config.get("AUTH_RATE_LIMIT", "5 per minute"))
 @require_json_body()
 def forgot_password(json_data):
     """Request a password reset email. Always returns 200 (no enumeration)."""
@@ -242,27 +269,6 @@ def reset_password(json_data):
         ),
         200,
     )
-
-
-# ─── Profile (legacy endpoints, kept for backward compatibility) ─────
-
-@auth_bp.route("/profile", methods=["GET"])
-@jwt_required()
-def get_profile():
-    """Get current user profile."""
-    user_id = get_jwt_identity()
-    user = auth_service.get_user_profile(user_id)
-    return jsonify({"status": "success", "user": profile_schema.dump(user)}), 200
-
-
-@auth_bp.route("/profile", methods=["PUT"])
-@jwt_required()
-@require_json_body()
-def update_profile_legacy(json_data):
-    """Legacy PUT /profile — delegates to the same logic as PATCH /me."""
-    user_id = get_jwt_identity()
-    user = auth_service.update_user_profile(user_id, **json_data)
-    return jsonify({"status": "success", "user": profile_schema.dump(user)}), 200
 
 
 # ─── Account Management (/me) ────────────────────────────────────────
@@ -314,6 +320,15 @@ def list_devices():
     )
 
 
+@me_bp.route("/devices/<int:device_id>", methods=["DELETE"])
+@jwt_required()
+def revoke_device(device_id):
+    """Revoke a specific device."""
+    user_id = get_jwt_identity()
+    auth_service.revoke_device(user_id, device_id)
+    return jsonify({"status": "success", "message": "Device revoked"}), 200
+
+
 @me_bp.route("/change-password", methods=["POST"])
 @jwt_required()
 @require_json_body()
@@ -351,6 +366,85 @@ def change_email(json_data):
             {
                 "status": "success",
                 "message": "Verification email sent to the new address.",
+                "user": profile_schema.dump(user),
+            }
+        ),
+        200,
+    )
+
+
+# ─── 2FA Management ──────────────────────────────────────────────────
+
+@auth_bp.route("/verify-otp", methods=["POST"])
+@limiter.limit(lambda: current_app.config.get("AUTH_RATE_LIMIT", "5 per minute"))
+@require_json_body()
+def verify_otp(json_data):
+    """Verify OTP and issue full tokens if valid."""
+    data = verify_otp_schema.load(json_data)
+    otp_code = data["otp_code"]
+    pending_token = data.get("pending_token")
+
+    if not pending_token:
+        return jsonify({"status": "error", "message": "Missing 2FA pending token"}), 401
+
+    try:
+        decoded_token = decode_token(pending_token)
+        if not decoded_token.get("2fa_pending"):
+            return jsonify({"status": "error", "message": "Invalid 2FA pending token"}), 401
+        user_id = decoded_token.get("sub")
+    except Exception:
+        return jsonify({"status": "error", "message": "Invalid or expired 2FA pending token"}), 401
+
+    user = auth_service.verify_otp(user_id, otp_code)
+    access_token, refresh_token = _issue_tokens(user)  # Issue full tokens
+
+    return (
+        jsonify(
+            {
+                "status": "success",
+                "message": "OTP verified, login complete",
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "user": profile_schema.dump(user),
+            }
+        ),
+        200,
+    )
+
+
+@me_bp.route("/enable-2fa", methods=["POST"])
+@jwt_required()
+@require_json_body()
+def enable_2fa(json_data):
+    """Enable 2FA for the current user."""
+    data = enable_2fa_schema.load(json_data)
+    user_id = get_jwt_identity()
+    user = auth_service.enable_2fa(user_id, data["current_password"])
+    return (
+        jsonify(
+            {
+                "status": "success",
+                "message": "Two-factor authentication enabled. Please log in again.",
+                "user": profile_schema.dump(user),
+            }
+        ),
+        200,
+    )
+
+
+@me_bp.route("/disable-2fa", methods=["POST"])
+@jwt_required()
+@require_json_body()
+def disable_2fa(json_data):
+    """Disable 2FA for the current user."""
+    data = disable_2fa_schema.load(json_data)
+    user_id = get_jwt_identity()
+    user = auth_service.disable_2fa(user_id, data["current_password"])
+    return (
+        jsonify(
+            {
+                "status": "success",
+                "message": "Two-factor authentication disabled. Please log in again.",
                 "user": profile_schema.dump(user),
             }
         ),

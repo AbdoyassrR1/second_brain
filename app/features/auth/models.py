@@ -3,9 +3,11 @@
 
 import random
 
+from datetime import datetime, timedelta
+
 from sqlalchemy import Column, String, Boolean, DateTime, Enum, Text, Date, Integer, ForeignKey
 from sqlalchemy.orm import relationship
-from datetime import datetime, timedelta
+
 from app.extensions import bcrypt, db
 from app.shared.models import BaseModel
 
@@ -47,13 +49,20 @@ class User(BaseModel):
     city = Column(String(20), nullable=True)
     is_verified = Column(Boolean, default=False, nullable=False)
     verified_at = Column(DateTime, nullable=True)
-    is_active = Column(Boolean, default=False, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
     last_login = Column(DateTime, default=lambda: datetime.now(), nullable=True)
     updated_at = Column(DateTime, default=lambda: datetime.now())
 
     # Account security / lockout
     failed_attempts = Column(Integer, default=0, nullable=False)
     locked_until = Column(DateTime, nullable=True)
+
+    # Token version — bumped to invalidate ALL outstanding tokens for a user
+    # (logout-all, password change, account deletion). Each issued JWT carries
+    # the version it was minted at; a mismatch means the token is revoked.
+    token_version = Column(Integer, default=0, nullable=False)
+
+    two_factor_enabled = Column(Boolean, default=False, nullable=False)
 
     # Soft delete tombstone (account deletion)
     is_deleted = Column(Boolean, default=False, nullable=False)

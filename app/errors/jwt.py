@@ -18,9 +18,34 @@ def register_jwt_callbacks(jwt):
 
     @jwt.token_in_blocklist_loader
     def check_if_token_revoked(jwt_header, jwt_payload):
-        """Return True when the token's jti is in the blocklist (logout / rotation)."""
+        """Return True when the token is revoked.
+
+        A token is revoked if its jti is in the explicit blocklist (single-token
+        logout / refresh rotation) OR if its embedded ``ver`` claim no longer
+        matches the user's ``token_version`` (logout-all / password change /
+        account deletion — which bump the version to invalidate all tokens).
+        """
+        from app.features.auth.models import User
         from app.features.auth.repository import TokenBlocklistRepository
-        return TokenBlocklistRepository.is_revoked(jwt_payload["jti"])
+
+        if jwt_payload.get("2fa_pending"):
+            return True
+
+        if TokenBlocklistRepository.is_revoked(jwt_payload["jti"]):
+            return True
+
+        user_id = jwt_payload.get("sub")
+        token_version = jwt_payload.get("ver")
+        # Tokens issued before the version claim existed can't be version-checked;
+        # rely on the blocklist alone for them.
+        if token_version is None:
+            return False
+
+        user = User.query.filter_by(id=user_id, is_deleted=False).first()
+        if user is None:
+            # Deleted (or missing) user: treat the token as revoked.
+            return True
+        return user.token_version != token_version
 
     @jwt.unauthorized_loader
     def unauthorized_loader(reason):

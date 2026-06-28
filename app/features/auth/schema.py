@@ -110,7 +110,7 @@ class UpdateProfileSchema(Schema):
     last_name = fields.Str(required=False, allow_none=True)
     avatar = fields.Str(required=False, allow_none=True)
     birth_date = fields.Date(required=False, allow_none=True)
-    gender = fields.Str(required=False, allow_none=True)
+    gender = fields.Str(required=False, allow_none=True, validate=validate.OneOf(["male", "female"]))
     country = fields.Str(required=False, allow_none=True)
     city = fields.Str(required=False, allow_none=True)
 
@@ -122,13 +122,12 @@ class UserProfileSchema(Schema):
     username = fields.Str()
     email = fields.Email()
     pending_email = fields.Email(allow_none=True)
-    is_verified = fields.Bool()
     phone_number = fields.Str()
     first_name = fields.Str(allow_none=True)
     last_name = fields.Str(allow_none=True)
     avatar = fields.Str(allow_none=True)
     birth_date = fields.Date(allow_none=True)
-    gender = fields.Str(allow_none=True)
+    gender = fields.Str(allow_none=True, validate=validate.OneOf(["male", "female"]))
     country = fields.Str(allow_none=True)
     city = fields.Str(allow_none=True)
     is_active = fields.Bool()
@@ -148,3 +147,22 @@ class UserDeviceSchema(Schema):
     ip_address = fields.Str(allow_none=True)
     last_seen = fields.DateTime()
     created_at = fields.DateTime(dump_only=True)
+
+
+class Enable2FASchema(Schema):
+    """Schema for enabling 2FA."""
+
+    current_password = fields.Str(required=True, load_only=True)
+
+
+class Disable2FASchema(Schema):
+    """Schema for disabling 2FA."""
+
+    current_password = fields.Str(required=True, load_only=True)
+
+
+class VerifyOTPSchema(Schema):
+    """Schema for verifying an OTP."""
+
+    otp_code = fields.Str(required=True, validate=validate.Length(equal=6))
+    pending_token = fields.Str(required=False, load_only=True)

@@ -3,7 +3,7 @@
 
 from functools import wraps
 from flask import request, jsonify
-from flask_jwt_extended import verify_jwt_in_request, get_jwt_identity
+from flask_jwt_extended import verify_jwt_in_request, get_jwt_identity, get_jwt
 from .exceptions import UnauthorizedError, ForbiddenError
 
 
@@ -28,9 +28,10 @@ def role_required(*allowed_roles):
         @wraps(fn)
         def wrapper(*args, **kwargs):
             verify_jwt_in_request()
-            user_id = get_jwt_identity()
+            claims = get_jwt()
             # TODO: Load user and check role
-            # This will be implemented once user service is ready
+            if "role" not in claims or claims["role"] not in allowed_roles:
+                raise ForbiddenError("Access forbidden: insufficient role")
             return fn(*args, **kwargs)
 
         return wrapper

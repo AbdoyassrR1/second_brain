@@ -69,10 +69,11 @@ class UserRepository:
     def update(user_id, **kwargs):
         """Update user fields."""
         user = User.query.filter_by(id=user_id).first()
-        if user:
+        if user and kwargs:
             for key, value in kwargs.items():
                 if hasattr(user, key):
                     setattr(user, key, value)
+                user.updated_at = datetime.utcnow()
             db.session.commit()
         return user
 
@@ -114,6 +115,19 @@ class UserRepository:
             user.deleted_at = datetime.utcnow()
             db.session.commit()
         return user
+
+    @staticmethod
+    def bump_token_version(user_id):
+        """Increment the user's token version, invalidating all outstanding tokens.
+
+        Returns the new version, or ``None`` if the user does not exist.
+        """
+        user = User.query.filter_by(id=user_id).first()
+        if not user:
+            return None
+        user.token_version = (user.token_version or 0) + 1
+        db.session.commit()
+        return user.token_version
 
 
 class RoleRepository:
@@ -337,3 +351,13 @@ class UserDeviceRepository:
             .order_by(UserDevice.last_seen.desc())
             .all()
         )
+
+    @staticmethod
+    def delete(device_id, user_id):
+        """Delete a specific device record for a user."""
+        device = UserDevice.query.filter_by(id=device_id, user_id=user_id).first()
+        if device:
+            db.session.delete(device)
+            db.session.commit()
+            return True
+        return False

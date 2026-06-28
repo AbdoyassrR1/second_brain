@@ -120,6 +120,21 @@ The Second Brain Team
 
         self.send_email(subject, [recipient_email or user.email], body)
 
+    def send_otp_email(self, user: User, otp_code: str):
+        """Send a short-lived login OTP to the user."""
+        subject = "Your Second Brain verification code"
+        body = f"""Hello {user.username},
+
+Your one-time verification code is: {otp_code}
+
+This code expires in 5 minutes. If you did not try to sign in, you can ignore this email.
+
+Best regards,
+The Second Brain Team
+"""
+
+        self.send_email(subject, [user.email], body)
+
     def send_alert(self, user: User, alert_type: str, message: str):
         """
         Send a generic alert/notification to user.

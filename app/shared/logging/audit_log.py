@@ -153,3 +153,27 @@ def log_device_login(user_id, device_name, ip_address):
         success=True,
         details={"device_name": device_name, "ip_address": ip_address},
     )
+
+def log_2fa_enabled(user_id):
+    """Log when 2FA is enabled for a user."""
+    log_audit_event("2FA_ENABLED", user_id=user_id, success=True)
+
+
+def log_2fa_disabled(user_id):
+    """Log when 2FA is disabled for a user."""
+    log_audit_event("2FA_DISABLED", user_id=user_id, success=True)
+
+
+def log_otp_sent(user_id, email):
+    """Log when an OTP is sent to a user's email."""
+    log_audit_event("OTP_SENT", user_id=user_id, success=True, details={"email": email})
+
+
+def log_otp_verified(user_id, email):
+    """Log when an OTP is successfully verified."""
+    log_audit_event("OTP_VERIFIED", user_id=user_id, success=True, details={"email": email})
+
+
+def log_otp_failed(user_id, reason):
+    """Log when OTP verification fails."""
+    log_audit_event("OTP_FAILED", user_id=user_id, success=False, details={"reason": reason})

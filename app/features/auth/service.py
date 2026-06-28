@@ -5,6 +5,7 @@ import re
 import secrets
 from datetime import datetime, timedelta, timezone
 from flask import current_app, g, request
+from flask_jwt_extended import create_access_token
 from app.shared.exceptions import (
     ValidationError,
     UnauthorizedError,
@@ -24,6 +25,11 @@ from app.shared.logging.audit_log import (
     log_account_locked,
     log_account_deleted,
     log_device_login,
+    log_otp_sent,
+    log_otp_verified,
+    log_otp_failed,
+    log_2fa_enabled,
+    log_2fa_disabled,
 )
 from app.extensions import db
 from .repository import (
@@ -132,7 +138,8 @@ class AuthService:
         """
         user = self.user_repo.find_by_email(email)
         if not user:
-            raise NotFoundError("User not found")
+            # Silent ignore — no enumeration
+            return None
 
         if user.is_verified:
             raise ConflictError("Email is already verified")
@@ -215,6 +222,12 @@ class AuthService:
             user_logins_total.labels(success="false").inc()
             raise UnauthorizedError("Invalid email or password")
 
+        if not user.is_active:
+            log_login_attempt(identity, False, reason="user_inactive")
+            auth_failures_total.labels(reason="user_inactive").inc()
+            user_logins_total.labels(success="false").inc()
+            raise UnauthorizedError("User account is inactive")
+
         if not user.is_verified:
             log_login_attempt(identity, False, reason="user_not_verified")
             auth_failures_total.labels(reason="user_not_verified").inc()
@@ -232,7 +245,79 @@ class AuthService:
 
         log_login_attempt(identity, True)
         user_logins_total.labels(success="true").inc()
+        
+        # If 2FA is enabled, generate an OTP and return a pending token
+        if user.two_factor_enabled:
+            otp_code = user.generate_otp()
+            db.session.commit()
+            self.mail_service.send_otp_email(user, otp_code)
+            log_otp_sent(user.id, user.email)
+            pending_token = create_access_token(
+                identity=user,
+                expires_delta=timedelta(minutes=current_app.config.get("TWO_FACTOR_PENDING_TOKEN_EXPIRES_MINUTES", 5)),
+                additional_claims={
+                    "role": user.role.name if user.role else None,
+                    "ver": user.token_version,
+                    "2fa_pending": True,
+                },
+            )
+            return {"status": "2fa_required", "pending_token": pending_token}
 
+        return user
+
+    def verify_otp(self, user_id, otp_code):
+        """Verify a pending OTP for 2FA login."""
+        user = self.user_repo.find_by_id(user_id)
+        if not user:
+            log_otp_failed(user_id, "user_not_found")
+            raise NotFoundError("User not found")
+
+        if not user.verify_otp(otp_code):
+            log_otp_failed(user.id, "invalid_or_expired_otp")
+            raise UnauthorizedError("Invalid or expired OTP")
+
+        user.otp_code = None
+        user.otp_expiry = None
+        db.session.commit()
+        log_otp_verified(user.id, user.email)
+        return user
+
+    def enable_2fa(self, user_id, current_password):
+        """Enable 2FA after confirming the current password."""
+        user = self.user_repo.find_by_id(user_id)
+        if not user:
+            raise NotFoundError("User not found")
+
+        if not user.check_password(current_password):
+            raise UnauthorizedError("Current password is incorrect")
+
+        if user.two_factor_enabled:
+            raise ConflictError("Two-factor authentication is already enabled")
+
+        user.two_factor_enabled = True
+        db.session.commit()
+        self.revoke_all_tokens(user.id)
+        log_2fa_enabled(user.id)
+        return user
+
+    def disable_2fa(self, user_id, current_password):
+        """Disable 2FA after confirming the current password."""
+        user = self.user_repo.find_by_id(user_id)
+        if not user:
+            raise NotFoundError("User not found")
+
+        if not user.check_password(current_password):
+            raise UnauthorizedError("Current password is incorrect")
+
+        if not user.two_factor_enabled:
+            raise ConflictError("Two-factor authentication is not enabled")
+
+        user.two_factor_enabled = False
+        user.otp_code = None
+        user.otp_expiry = None
+        db.session.commit()
+        self.revoke_all_tokens(user.id)
+        log_2fa_disabled(user.id)
         return user
 
     # ── Logout / Token revocation ─────────────────────────────────────
@@ -243,10 +328,14 @@ class AuthService:
         log_logout(user_id)
 
     def revoke_all_tokens(self, user_id):
-        """Revoke all outstanding tokens for a user (logout-all / delete)."""
-        existing = self.token_blocklist_repo.revoke_user_tokens(user_id)
-        # We don't have a way to retroactively add new jtis we don't know about.
-        # The user will simply be unable to use previously-issued tokens.
+        """Invalidate ALL outstanding tokens for a user (logout-all / delete).
+
+        Implemented by bumping the user's ``token_version``: every token carries
+        the version it was minted at, and the blocklist loader rejects any token
+        whose version no longer matches. This catches tokens we never saw the jti
+        of (e.g. issued to other devices) — something a pure jti blocklist can't.
+        """
+        self.user_repo.bump_token_version(user_id)
         log_logout(user_id)
 
     # ── Refresh token rotation ─────────────────────────────────────────
@@ -437,17 +526,6 @@ class AuthService:
         updated_user = self.user_repo.update(user_id, **kwargs)
         log_profile_update(user_id, kwargs)
 
-        # If email changed, mark unverified and send new verification email.
-        if email_changed:
-            updated_user.is_verified = False
-            updated_user.verified_at = None
-            db.session.commit()
-            try:
-                self.send_email_verification(updated_user.email)
-            except Exception:
-                # Don't block the profile update if email sending fails.
-                pass
-
         return updated_user
 
     def delete_account(self, user_id):
@@ -470,6 +548,12 @@ class AuthService:
     def list_devices(self, user_id):
         """List all recorded devices for a user."""
         return self.device_repo.find_by_user(user_id)
+
+    def revoke_device(self, user_id, device_id):
+        """Revoke a specific device."""
+        if not self.device_repo.delete(device_id, user_id):
+            raise NotFoundError("Device not found")
+        return True
 
     # ── Internal helpers ─────────────────────────────────────────────
 

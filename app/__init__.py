@@ -74,9 +74,13 @@ def create_app(config_name=None):
 
     @jwt.user_lookup_loader
     def user_lookup_callback(_jwt_header, jwt_data):
-        """Load user from JWT identity."""
+        """Load a non-deleted user from JWT identity.
+
+        Soft-deleted users are treated as if they don't exist, so any token
+        belonging to a deleted account fails authentication.
+        """
         identity = jwt_data["sub"]
-        user = User.query.filter_by(id=identity).first()
+        user = User.query.filter_by(id=identity, is_deleted=False).first()
         g.user_id = user.id if user else None
         return user
 
