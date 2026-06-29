@@ -73,7 +73,7 @@ class UserRepository:
             for key, value in kwargs.items():
                 if hasattr(user, key):
                     setattr(user, key, value)
-                user.updated_at = datetime.utcnow()
+            user.updated_at = datetime.utcnow()
             db.session.commit()
         return user
 

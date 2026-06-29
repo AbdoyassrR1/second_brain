@@ -79,7 +79,7 @@ class TestUnauthorizedError:
 
     def test_missing_jwt_returns_401(self, client):
         """Test that missing JWT returns 401 with proper error code."""
-        response = client.get("/api/v1/auth/profile")
+        response = client.get("/api/v1/me")
         assert response.status_code == 401
         data = json.loads(response.data)
         assert data["error_code"] == "UNAUTHORIZED"
@@ -87,7 +87,7 @@ class TestUnauthorizedError:
 
     def test_missing_jwt_includes_trace_ids(self, client):
         """Test that error response includes trace IDs."""
-        response = client.get("/api/v1/auth/profile")
+        response = client.get("/api/v1/me")
         assert response.status_code == 401
         assert "X-Trace-ID" in response.headers
         assert "X-Span-ID" in response.headers
@@ -96,7 +96,7 @@ class TestUnauthorizedError:
     def test_invalid_jwt_returns_401(self, client):
         """Test that invalid JWT returns 401."""
         response = client.get(
-            "/api/v1/auth/profile",
+            "/api/v1/me",
             headers={"Authorization": "Bearer invalid-token"}
         )
         assert response.status_code == 401

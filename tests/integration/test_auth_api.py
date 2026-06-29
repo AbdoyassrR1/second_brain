@@ -446,7 +446,7 @@ class TestChangePassword:
         """Change password with correct current password."""
         headers, _ = auth_headers
         response = client.post(
-            "/api/v1/auth/change-password",
+            "/api/v1/me/change-password",
             headers=headers,
             json={"current_password": "Password123", "new_password": "NewPassword456"},
         )
@@ -464,7 +464,7 @@ class TestChangePassword:
         """Change password with wrong current password returns 401."""
         headers, _ = auth_headers
         response = client.post(
-            "/api/v1/auth/change-password",
+            "/api/v1/me/change-password",
             headers=headers,
             json={"current_password": "WrongPassword", "new_password": "NewPassword456"},
         )
@@ -474,7 +474,7 @@ class TestChangePassword:
         """Change password with weak new password returns 400."""
         headers, _ = auth_headers
         response = client.post(
-            "/api/v1/auth/change-password",
+            "/api/v1/me/change-password",
             headers=headers,
             json={"current_password": "Password123", "new_password": "weak"},
         )

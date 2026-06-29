@@ -505,7 +505,10 @@ class AuthService:
             if field in kwargs:
                 if field in {"email", "pending_email"}:
                     raise ForbiddenError("Email changes must use /me/change-email")
-                kwargs.pop(field, None)
+                elif field == "password":
+                    raise ForbiddenError("Password changes must use /me/change-password")
+                else:
+                    raise ForbiddenError(f"Field '{field}' cannot be updated via this endpoint")
 
         # Username uniqueness
         if "username" in kwargs and kwargs["username"] != user.username:

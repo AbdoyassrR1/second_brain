@@ -195,6 +195,7 @@ def logout_all():
 # ─── Email Verification ──────────────────────────────────────────────
 
 @auth_bp.route("/send-email-verification", methods=["POST"])
+@limiter.limit(lambda: current_app.config.get("AUTH_RATE_LIMIT", "5 per minute"))
 @require_json_body()
 def send_email_verification(json_data):
     """Send an email verification link to a user."""
@@ -212,6 +213,7 @@ def send_email_verification(json_data):
 
 
 @auth_bp.route("/verify-email", methods=["GET", "POST"])
+@limiter.limit(lambda: current_app.config.get("AUTH_RATE_LIMIT", "5 per minute"))
 def verify_email():
     """Verify a user's email using a token."""
     if request.method == "GET":
@@ -254,6 +256,7 @@ def forgot_password(json_data):
 
 
 @auth_bp.route("/reset-password", methods=["POST"])
+@limiter.limit(lambda: current_app.config.get("AUTH_RATE_LIMIT", "5 per minute"))
 @require_json_body()
 def reset_password(json_data):
     """Reset password using a token from the forgot-password email."""
