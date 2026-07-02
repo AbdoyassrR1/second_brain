@@ -13,12 +13,22 @@ from flask_jwt_extended import JWTManager
 from flask_marshmallow import Marshmallow
 
 
+def _limiter_is_enabled():
+    """Check if rate limiting is enabled via config."""
+    from flask import current_app
+    try:
+        return current_app.config.get("RATELIMIT_ENABLED", True)
+    except RuntimeError:
+        return True
+
+
 db = SQLAlchemy()
 migrate = Migrate()
 limiter = Limiter(
     key_func=get_remote_address,
     default_limits=["200 per day", "50 per hour"],
     in_memory_fallback_enabled=True,
+    enabled=_limiter_is_enabled,
 )
 bcrypt = Bcrypt()
 mail = Mail()

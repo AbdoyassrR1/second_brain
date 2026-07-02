@@ -43,6 +43,7 @@ class Config:
 
     # Rate limiting
     AUTH_RATE_LIMIT = os.getenv("AUTH_RATE_LIMIT", "5 per minute")
+    TASK_RATE_LIMIT = os.getenv("TASK_RATE_LIMIT", "10 per minute")
 
     # CORS
     CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
@@ -92,7 +93,9 @@ class TestingConfig(Config):
     MAIL_SUPPRESS_SEND = True
 
     # Tighter auth windows so lockout/expiry flows are exercisable in tests
+    RATELIMIT_ENABLED = False
     AUTH_RATE_LIMIT = "1000 per minute"
+    TASK_RATE_LIMIT = "1000 per minute"
     MAX_FAILED_LOGIN_ATTEMPTS = 3
     ACCOUNT_LOCKOUT_MINUTES = 1
     PASSWORD_RESET_TOKEN_EXPIRES_MINUTES = 1

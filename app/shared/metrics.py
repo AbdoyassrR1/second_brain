@@ -64,6 +64,28 @@ active_tasks_gauge = Gauge(
     "Total active tasks",
 )
 
+# Project metrics
+projects_created_total = Counter(
+    "projects_created_total",
+    "Total projects created",
+)
+
+projects_deleted_total = Counter(
+    "projects_deleted_total",
+    "Total projects deleted",
+)
+
+# Label metrics
+labels_created_total = Counter(
+    "labels_created_total",
+    "Total labels created",
+)
+
+labels_deleted_total = Counter(
+    "labels_deleted_total",
+    "Total labels deleted",
+)
+
 # Reminder metrics
 reminders_created_total = Counter(
     "reminders_created_total",

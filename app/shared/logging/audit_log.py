@@ -177,3 +177,113 @@ def log_otp_verified(user_id, email):
 def log_otp_failed(user_id, reason):
     """Log when OTP verification fails."""
     log_audit_event("OTP_FAILED", user_id=user_id, success=False, details={"reason": reason})
+
+
+def log_project_create(user_id, project_id):
+    """Log project creation."""
+    log_audit_event(
+        "PROJECT_CREATED",
+        user_id=user_id,
+        success=True,
+        details={"project_id": project_id},
+    )
+
+
+def log_project_update(user_id, project_id, changes):
+    """Log project update."""
+    log_audit_event(
+        "PROJECT_UPDATED",
+        user_id=user_id,
+        success=True,
+        details={"project_id": project_id, "changed_fields": list(changes.keys())},
+    )
+
+
+def log_project_delete(user_id, project_id):
+    """Log project deletion."""
+    log_audit_event(
+        "PROJECT_DELETED",
+        user_id=user_id,
+        success=True,
+        details={"project_id": project_id},
+    )
+
+
+def log_label_create(user_id, label_id):
+    """Log label creation."""
+    log_audit_event(
+        "LABEL_CREATED",
+        user_id=user_id,
+        success=True,
+        details={"label_id": label_id},
+    )
+
+
+def log_label_delete(user_id, label_id):
+    """Log label deletion."""
+    log_audit_event(
+        "LABEL_DELETED",
+        user_id=user_id,
+        success=True,
+        details={"label_id": label_id},
+    )
+
+
+def log_label_assigned(user_id, task_id, label_id):
+    """Log label assignment to task."""
+    log_audit_event(
+        "LABEL_ASSIGNED",
+        user_id=user_id,
+        success=True,
+        details={"task_id": task_id, "label_id": label_id},
+    )
+
+
+def log_label_removed(user_id, task_id, label_id):
+    """Log label removal from task."""
+    log_audit_event(
+        "LABEL_REMOVED",
+        user_id=user_id,
+        success=True,
+        details={"task_id": task_id, "label_id": label_id},
+    )
+
+
+def log_task_archived(user_id, task_id):
+    """Log task archiving."""
+    log_audit_event(
+        "TASK_ARCHIVED",
+        user_id=user_id,
+        success=True,
+        details={"task_id": task_id},
+    )
+
+
+def log_task_restored(user_id, task_id):
+    """Log task restoration from archive."""
+    log_audit_event(
+        "TASK_RESTORED",
+        user_id=user_id,
+        success=True,
+        details={"task_id": task_id},
+    )
+
+
+def log_task_soft_deleted(user_id, task_id):
+    """Log task soft deletion."""
+    log_audit_event(
+        "TASK_SOFT_DELETED",
+        user_id=user_id,
+        success=True,
+        details={"task_id": task_id},
+    )
+
+
+def log_task_recovered(user_id, task_id):
+    """Log task recovery from soft delete."""
+    log_audit_event(
+        "TASK_RECOVERED",
+        user_id=user_id,
+        success=True,
+        details={"task_id": task_id},
+    )
