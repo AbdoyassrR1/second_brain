@@ -613,3 +613,172 @@ class TestDevices:
         assert data["status"] == "success"
         assert "devices" in data
         assert data["count"] >= 1
+
+    def test_delete_device_success(self, client, db, auth_headers):
+        """Test DELETE /me/devices/<id> removes a device."""
+        headers, _ = auth_headers
+
+        # List devices first
+        list_resp = client.get("/api/v1/me/devices", headers=headers)
+        assert list_resp.status_code == 200
+        devices = list_resp.get_json().get("devices", [])
+        if devices:
+            device_id = devices[0]["id"]
+            response = client.delete(f"/api/v1/me/devices/{device_id}", headers=headers)
+            assert response.status_code == 200
+            data = response.get_json()
+            assert data["status"] == "success"
+
+    def test_delete_device_unauthorized(self, client, db, auth_headers):
+        """Test DELETE /me/devices/<id> without auth."""
+        headers, _ = auth_headers
+        response = client.delete("/api/v1/me/devices/some-device-id")
+        assert response.status_code == 401
+
+
+
+
+class TestProfileUpdate:
+    """Test profile update endpoint."""
+
+    def test_update_profile_success(self, client, db, auth_headers):
+        """Test PATCH /me updates profile fields."""
+        headers, user_id = auth_headers
+        response = client.patch(
+            "/api/v1/me",
+            headers=headers,
+            json={"first_name": "John", "last_name": "Doe", "gender": "MALE"},
+        )
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["status"] == "success"
+        assert data["user"]["first_name"] == "John"
+        assert data["user"]["last_name"] == "Doe"
+
+    def test_update_profile_unauthorized(self, client, db):
+        """Test profile update without authentication."""
+        response = client.patch(
+            "/api/v1/me", json={"first_name": "John"}
+        )
+        assert response.status_code == 401
+
+    def test_update_profile_duplicate_username(self, client, db, auth_headers):
+        """Test updating to an already-used username."""
+        # Create second user
+        client.post(
+            "/api/v1/auth/register",
+            json={
+                "username": "existing_user",
+                "email": "existing@test.com",
+                "password": "Password123",
+                "phone_number": "7777777777",
+            },
+        )
+
+        headers, _ = auth_headers
+        response = client.patch(
+            "/api/v1/me",
+            headers=headers,
+            json={"username": "existing_user"},
+        )
+        assert response.status_code == 409
+
+
+class Test2FAEndpoints:
+    """Test 2FA enable/disable endpoints."""
+
+    def test_enable_2fa_success(self, client, db, auth_headers, verified_user):
+        """Test enabling 2FA."""
+        headers, _ = auth_headers
+        response = client.post(
+            "/api/v1/me/enable-2fa",
+            headers=headers,
+            json={"current_password": "Password123"},
+        )
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["status"] == "success"
+        assert "two-factor" in data["message"].lower()
+
+    def test_enable_2fa_wrong_password(self, client, db, auth_headers):
+        """Test enabling 2FA with wrong password."""
+        headers, _ = auth_headers
+        response = client.post(
+            "/api/v1/me/enable-2fa",
+            headers=headers,
+            json={"current_password": "WrongPassword"},
+        )
+        assert response.status_code == 401
+
+    def test_disable_2fa_success(self, client, db, auth_headers, verified_user, monkeypatch):
+        """Test disabling 2FA."""
+        from app.features.auth.models import User
+        from app.extensions import db as _db
+
+        headers, _ = auth_headers
+
+        # First enable (this revokes the current token)
+        client.post(
+            "/api/v1/me/enable-2fa",
+            headers=headers,
+            json={"current_password": "Password123"},
+        )
+
+        # Mock OTP email to avoid sending it
+        monkeypatch.setattr(
+            "app.features.auth.routes.auth_service.mail_service.send_otp_email",
+            lambda user, otp_code: None,
+        )
+
+        # Login after 2FA enabled → get pending_token + OTP
+        login_response = client.post(
+            "/api/v1/auth/login",
+            json={"email": verified_user.email, "password": "Password123"},
+        )
+        assert login_response.status_code == 200
+        login_data = login_response.get_json()
+        assert login_data["status"] == "2fa_required"
+
+        # Retrieve OTP from DB and verify
+        user = _db.session.query(User).filter_by(id=verified_user.id).first()
+        otp_code = user.otp_code
+
+        verify_response = client.post(
+            "/api/v1/auth/verify-otp",
+            json={"pending_token": login_data["pending_token"], "otp_code": otp_code},
+        )
+        assert verify_response.status_code == 200
+        new_token = verify_response.get_json()["access_token"]
+        new_headers = {"Authorization": f"Bearer {new_token}"}
+
+        # Then disable
+        response = client.post(
+            "/api/v1/me/disable-2fa",
+            headers=new_headers,
+            json={"current_password": "Password123"},
+        )
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["status"] == "success"
+        assert "two-factor" in data["message"].lower()
+
+    def test_disable_2fa_wrong_password(self, client, db, auth_headers):
+        """Test disabling 2FA with wrong password."""
+        headers, _ = auth_headers
+        response = client.post(
+            "/api/v1/me/disable-2fa",
+            headers=headers,
+            json={"current_password": "WrongPassword"},
+        )
+        assert response.status_code == 401
+
+    def test_enable_2fa_unauthorized(self, client, db):
+        """Test enabling 2FA without authentication."""
+        response = client.post(
+            "/api/v1/me/enable-2fa",
+            json={"current_password": "Password123"},
+        )
+        assert response.status_code == 401
+

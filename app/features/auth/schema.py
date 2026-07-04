@@ -110,7 +110,7 @@ class UpdateProfileSchema(Schema):
     last_name = fields.Str(required=False, allow_none=True)
     avatar = fields.Str(required=False, allow_none=True)
     birth_date = fields.Date(required=False, allow_none=True)
-    gender = fields.Str(required=False, allow_none=True, validate=validate.OneOf(["male", "female"]))
+    gender = fields.Str(required=False, allow_none=True, validate=validate.OneOf(["MALE", "FEMALE"]))
     country = fields.Str(required=False, allow_none=True)
     city = fields.Str(required=False, allow_none=True)
 
@@ -127,7 +127,7 @@ class UserProfileSchema(Schema):
     last_name = fields.Str(allow_none=True)
     avatar = fields.Str(allow_none=True)
     birth_date = fields.Date(allow_none=True)
-    gender = fields.Str(allow_none=True, validate=validate.OneOf(["male", "female"]))
+    gender = fields.Str(allow_none=True, validate=validate.OneOf(["MALE", "FEMALE"]))
     country = fields.Str(allow_none=True)
     city = fields.Str(allow_none=True)
     is_active = fields.Bool()

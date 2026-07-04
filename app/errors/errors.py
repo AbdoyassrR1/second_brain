@@ -26,7 +26,7 @@ def register_error_handlers(app):
         from app.shared.exceptions import AppError
 
         if isinstance(error, AppError):
-            error_code = error.__class__.__name__.replace("Error", "").upper()
+            error_code = getattr(error, "error_code", error.__class__.__name__.upper())
             return _error_response(error.message, error_code, error.status_code)
 
         # Truly unexpected exception — log with traceback and return 500.

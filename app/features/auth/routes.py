@@ -323,7 +323,7 @@ def list_devices():
     )
 
 
-@me_bp.route("/devices/<int:device_id>", methods=["DELETE"])
+@me_bp.route("/devices/<device_id>", methods=["DELETE"])
 @jwt_required()
 def revoke_device(device_id):
     """Revoke a specific device."""
