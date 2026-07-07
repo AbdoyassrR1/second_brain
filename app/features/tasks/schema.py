@@ -70,7 +70,7 @@ class LabelRefSchema(Schema):
     color = fields.Str(allow_none=True)
 
 
-class BulkTaskActionSchema(Schema):
+class BulkTaskActionSchema(TaskUpdateSchema):
     """Schema for bulk task operations."""
 
     task_ids = fields.List(fields.Str(), required=True, validate=validate.Length(min=1))
