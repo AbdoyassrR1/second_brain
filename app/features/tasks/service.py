@@ -227,7 +227,7 @@ class TaskService:
         task = self._guard_ownership(task_id, user_id)
         if not task.is_deleted:
             raise ValidationError("Task is not deleted")
-        self.ory.restore(task_id)
+        self.repository.restore(task_id)
         log_task_recovered(user_id, task_id)
         return self.repository.find_by_id(task_id)
 

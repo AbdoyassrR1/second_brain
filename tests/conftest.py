@@ -10,6 +10,19 @@ from app.features.auth.models import User
 from app.features.auth.repository import RoleRepository
 
 
+@pytest.fixture(autouse=True)
+def _clean_g():
+    """Clear g between tests to prevent cross-test leakage."""
+    try:
+        from flask import g
+        keys = list(g.__dict__.keys())
+        for key in keys:
+            delattr(g, key)
+    except RuntimeError:
+        pass
+    yield
+
+
 @pytest.fixture(scope="session")
 def app():
     """Create application for test session."""

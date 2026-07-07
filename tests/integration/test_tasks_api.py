@@ -361,8 +361,8 @@ class TestTaskSubtasks:
         response = client.get(f"/api/v1/tasks/{parent_id}/subtasks", headers=headers)
         assert response.status_code == 200
         data = response.get_json()
-        assert len(data["subtasks"]) == 1
-        assert data["subtasks"][0]["title"] == "Subtask"
+        assert len(data["items"]) == 1
+        assert data["items"][0]["title"] == "Subtask"
 
 
 class TestTaskBulkOperations:
