@@ -3,15 +3,16 @@
 
 import time
 import click
+import redis as redis_module
 from flask import Flask, g, request
 from .extensions import db, migrate, limiter, bcrypt, mail, jwt, cors, ma
 from . import config
+from app.shared.cache import RedisCache
 from app.shared.middleware.middleware import setup_middleware
 from app.shared.logging.logging_config import setup_logging
+from app.shared.metrics import app_startup_time_seconds
 from app.errors.errors import register_error_handlers
 from app.errors.jwt import register_jwt_callbacks
-
-from app.shared.metrics import app_startup_time_seconds
 
 
 def create_app(config_name=None):
@@ -33,6 +34,29 @@ def create_app(config_name=None):
     
     app.config.from_object(config.config[config_name])
 
+    # Configure rate limiter storage from app config
+    limiter.storage_uri = app.config.get("RATELIMIT_STORAGE_URL", "memory://")
+    
+    # Setup structured logging early so all subsequent logs use JSON format
+    setup_logging(app)
+
+    # Initialize Redis client and cache
+    from . import extensions as _ext
+    redis_url = app.config.get("REDIS_URL", "redis://localhost:6379/0")
+    try:
+        _ext.redis_client = redis_module.Redis.from_url(
+            redis_url,
+            decode_responses=True,
+            socket_connect_timeout=2,
+            socket_timeout=2,
+        )
+        _ext.redis_client.ping()
+        app.logger.info("Redis connected at %s", redis_url)
+    except Exception:
+        _ext.redis_client = None
+        app.logger.warning("Redis unavailable — caching disabled, rate limiting falls back to memory")
+    _ext.cache = RedisCache(_ext.redis_client, default_timeout=app.config.get("CACHE_DEFAULT_TIMEOUT", 300))
+
     # Initialize extensions
     db.init_app(app)
     migrate.init_app(app, db)
@@ -45,9 +69,6 @@ def create_app(config_name=None):
 
     # Setup JWT callbacks before routes start using @jwt_required
     register_jwt_callbacks(jwt)
-
-    # Setup structured logging
-    setup_logging(app)
 
     # Setup middleware
     setup_middleware(app)

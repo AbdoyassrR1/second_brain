@@ -42,8 +42,13 @@ class Config:
     ACCOUNT_LOCKOUT_MINUTES = int(os.getenv("ACCOUNT_LOCKOUT_MINUTES", "15"))
 
     # Rate limiting
+    RATELIMIT_STORAGE_URL = os.getenv("RATELIMIT_STORAGE_URL", "redis://localhost:6379/1")
     AUTH_RATE_LIMIT = os.getenv("AUTH_RATE_LIMIT", "5 per minute")
     TASK_RATE_LIMIT = os.getenv("TASK_RATE_LIMIT", "10 per minute")
+
+    # Redis
+    REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    CACHE_DEFAULT_TIMEOUT = int(os.getenv("CACHE_DEFAULT_TIMEOUT", "300"))
 
     # CORS
     CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
@@ -94,6 +99,7 @@ class TestingConfig(Config):
 
     # Tighter auth windows so lockout/expiry flows are exercisable in tests
     RATELIMIT_ENABLED = False
+    RATELIMIT_STORAGE_URL = "memory://"
     AUTH_RATE_LIMIT = "1000 per minute"
     TASK_RATE_LIMIT = "1000 per minute"
     MAX_FAILED_LOGIN_ATTEMPTS = 3

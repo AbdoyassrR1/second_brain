@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 """Flask extensions initialized here for use elsewhere."""
 
+import os
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_limiter import Limiter
@@ -27,6 +28,7 @@ migrate = Migrate()
 limiter = Limiter(
     key_func=get_remote_address,
     default_limits=["200 per day", "50 per hour"],
+    storage_uri=os.getenv("RATELIMIT_STORAGE_URL", "redis://localhost:6379/1"),
     in_memory_fallback_enabled=True,
     enabled=_limiter_is_enabled,
 )
@@ -37,3 +39,7 @@ ma = Marshmallow()
 
 # CORS initialized without resources here; will be configured in app factory
 cors = CORS()
+
+# Redis client and cache — initialized in app factory
+redis_client = None
+cache = None

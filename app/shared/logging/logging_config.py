@@ -97,8 +97,9 @@ class RequestContextFilter(logging.Filter):
 
 def setup_logging(app):
     """Configure application logging."""
-    # Remove default handlers
+    # Remove default handlers and prevent propagation to avoid duplicates
     app.logger.handlers.clear()
+    app.logger.propagate = False
     app.logger.setLevel(logging.DEBUG if app.debug else logging.INFO)
 
     # Create formatters
@@ -143,6 +144,7 @@ def setup_logging(app):
     # Audit logger (always to file, separate from app logs)
     audit_logger = logging.getLogger("audit")
     audit_logger.setLevel(logging.INFO)
+    audit_logger.propagate = False
     audit_logger.handlers.clear()
 
     if not app.debug:
