@@ -34,8 +34,9 @@ class TestLabelList:
     def test_list_labels_empty(self, db, verified_user):
         """Test listing labels when none exist."""
         service = LabelService()
-        labels = service.list_labels(verified_user.id)
-        assert len(labels) == 0
+        p = service.list_labels(verified_user.id)
+        assert len(p.items) == 0
+        assert p.total == 0
 
     def test_list_labels_with_data(self, db, verified_user):
         """Test listing labels after creating some."""
@@ -44,8 +45,9 @@ class TestLabelList:
         service.create_label(verified_user.id, name="bug")
         service.create_label(verified_user.id, name="feature")
 
-        labels = service.list_labels(verified_user.id)
-        assert len(labels) == 3
+        p = service.list_labels(verified_user.id)
+        assert len(p.items) == 3
+        assert p.total == 3
 
     def test_list_labels_other_user_isolation(self, db, verified_user):
         """Test labels are isolated per user."""
@@ -53,8 +55,9 @@ class TestLabelList:
         service.create_label(verified_user.id, name="private-label")
 
         # A different user ID should see no labels
-        other_labels = service.list_labels("other-user-id")
-        assert len(other_labels) == 0
+        p = service.list_labels("other-user-id")
+        assert len(p.items) == 0
+        assert p.total == 0
 
 
 class TestLabelDelete:
@@ -67,8 +70,9 @@ class TestLabelDelete:
 
         service.delete_label(label.id, verified_user.id)
 
-        labels = service.list_labels(verified_user.id)
-        assert len(labels) == 0
+        p = service.list_labels(verified_user.id)
+        assert len(p.items) == 0
+        assert p.total == 0
 
     def test_delete_label_not_found(self, db, verified_user):
         """Test deleting a non-existent label raises error."""

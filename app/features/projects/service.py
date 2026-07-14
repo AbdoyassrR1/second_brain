@@ -68,16 +68,8 @@ class ProjectService:
         """
         return self._guard_ownership(project_id, user_id)
 
-    def list_projects(self, user_id):
-        """List projects for a user.
-
-        Args:
-            user_id: User ID
-
-        Returns:
-            List of Project objects
-        """
-        return self.repository.find_by_user_id(user_id)
+    def list_projects(self, user_id, page=1, per_page=20):
+        return self.repository.find_by_user_id(user_id, page=page, per_page=per_page)
 
     # ── Update ──────────────────────────────────────────────────────────
 

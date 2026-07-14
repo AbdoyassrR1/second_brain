@@ -548,9 +548,8 @@ class AuthService:
 
     # ── Device tracking ──────────────────────────────────────────────
 
-    def list_devices(self, user_id):
-        """List all recorded devices for a user."""
-        return self.device_repo.find_by_user(user_id)
+    def list_devices(self, user_id, page=1, per_page=20):
+        return self.device_repo.find_by_user(user_id, page=page, per_page=per_page)
 
     def revoke_device(self, user_id, device_id):
         """Revoke a specific device."""

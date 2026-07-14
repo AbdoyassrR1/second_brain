@@ -98,7 +98,8 @@ class TestLabelList:
         assert response.status_code == 200
         data = response.get_json()
         assert data["status"] == "success"
-        assert data["count"] == 0
+        assert data["total"] == 0
+        assert data["items"] == []
 
     def test_list_labels_with_data(self, client, db, auth_headers):
         """Test listing labels after creating some."""
@@ -110,8 +111,8 @@ class TestLabelList:
         response = client.get("/api/v1/labels", headers=headers)
         assert response.status_code == 200
         data = response.get_json()
-        assert data["count"] == 3
-        assert len(data["labels"]) == 3
+        assert data["total"] == 3
+        assert len(data["items"]) == 3
 
     def test_list_labels_unauthorized(self, client, db):
         """Test listing labels without authentication."""
@@ -129,7 +130,7 @@ class TestLabelList:
         response = client.get("/api/v1/labels", headers=headers2)
         assert response.status_code == 200
         data = response.get_json()
-        assert data["count"] == 0
+        assert data["total"] == 0
 
 
 class TestLabelDelete:
@@ -149,7 +150,7 @@ class TestLabelDelete:
         assert data["status"] == "success"
 
         list_resp = client.get("/api/v1/labels", headers=headers)
-        assert list_resp.get_json()["count"] == 0
+        assert list_resp.get_json()["total"] == 0
 
     def test_delete_label_unauthorized(self, client, db, auth_headers):
         """Test label deletion without authentication."""

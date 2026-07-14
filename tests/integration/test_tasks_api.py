@@ -84,11 +84,11 @@ class TestTaskList:
                 json={"title": f"Task {i}", "priority": "low"},
             )
         
-        response = client.get("/api/v1/tasks?page=1&page_size=2", headers=headers)
+        response = client.get("/api/v1/tasks?page=1&per_page=2", headers=headers)
         assert response.status_code == 200
         data = response.get_json()
         assert data["page"] == 1
-        assert data["page_size"] == 2
+        assert data["per_page"] == 2
         assert data["total"] == 5
         assert data["pages"] == 3
         assert len(data["items"]) == 2

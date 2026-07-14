@@ -62,8 +62,9 @@ class TestProjectRead:
     def test_list_projects_empty(self, db, verified_user):
         """Test listing projects when none exist."""
         service = ProjectService()
-        projects = service.list_projects(verified_user.id)
-        assert len(projects) == 0
+        p = service.list_projects(verified_user.id)
+        assert len(p.items) == 0
+        assert p.total == 0
 
     def test_list_projects_with_data(self, db, verified_user):
         """Test listing projects after creating some."""
@@ -71,16 +72,18 @@ class TestProjectRead:
         service.create_project(verified_user.id, name="Work")
         service.create_project(verified_user.id, name="Personal")
 
-        projects = service.list_projects(verified_user.id)
-        assert len(projects) == 2
+        p = service.list_projects(verified_user.id)
+        assert len(p.items) == 2
+        assert p.total == 2
 
     def test_list_projects_user_isolation(self, db, verified_user):
         """Test projects are isolated per user."""
         service = ProjectService()
         service.create_project(verified_user.id, name="Secret")
 
-        other_projects = service.list_projects("other-user-id")
-        assert len(other_projects) == 0
+        p = service.list_projects("other-user-id")
+        assert len(p.items) == 0
+        assert p.total == 0
 
 
 class TestProjectUpdate:
@@ -120,8 +123,9 @@ class TestProjectDelete:
 
         service.delete_project(project.id, verified_user.id)
 
-        projects = service.list_projects(verified_user.id)
-        assert len(projects) == 0
+        p = service.list_projects(verified_user.id)
+        assert len(p.items) == 0
+        assert p.total == 0
 
     def test_delete_project_not_found(self, db, verified_user):
         """Test deleting a non-existent project raises error."""

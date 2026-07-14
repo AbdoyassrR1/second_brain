@@ -35,30 +35,8 @@ class TaskRepository:
         archived=None,
         sort=None,
         page=1,
-        page_size=20,
+        per_page=20,
     ):
-        """Find tasks by user ID with optional filters.
-
-        Args:
-            user_id: User ID
-            status: Filter by status (todo, in_progress, completed, cancelled)
-            priority: Filter by priority (low, medium, high, urgent)
-            project_id: Filter by project ID
-            parent_task_id: Filter by parent task ID (use "none" for top-level)
-            due: Due date filter (today, tomorrow, upcoming)
-            overdue: Filter overdue tasks (true)
-            q: Search query for title/description
-            labels: Filter by label IDs (comma-separated)
-            include_archived: Include archived tasks
-            archived: Show only archived tasks
-            sort: Sort specification (e.g. "priority,-due_date")
-            page: Page number (1-indexed)
-            page_size: Items per page
-
-        Returns:
-            tuple: (list of Task objects, total count)
-        """
-        # Base query: exclude soft-deleted tasks
         query = Task.query.filter_by(user_id=user_id, is_deleted=False)
 
         # Archive filter
@@ -117,9 +95,6 @@ class TaskRepository:
                     )
                 )
 
-        # Get total count before pagination
-        total = query.count()
-
         # Sorting
         if sort:
             sort_fields = sort.split(",")
@@ -151,13 +126,7 @@ class TaskRepository:
             if order_criteria:
                 query = query.order_by(*order_criteria)
 
-        # Pagination
-        if page_size:
-            query = query.limit(page_size)
-        if page and page > 1:
-            query = query.offset((page - 1) * page_size)
-
-        return query.all(), total
+        return db.paginate(query, page=page, per_page=per_page, error_out=False)
 
     @staticmethod
     def create(user_id, title, **kwargs):

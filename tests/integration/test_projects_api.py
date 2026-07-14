@@ -85,7 +85,8 @@ class TestProjectList:
         assert response.status_code == 200
         data = response.get_json()
         assert data["status"] == "success"
-        assert data["count"] == 0
+        assert data["total"] == 0
+        assert data["items"] == []
 
     def test_list_projects_with_data(self, client, db, auth_headers):
         """Test listing projects after creating some."""
@@ -96,7 +97,8 @@ class TestProjectList:
         response = client.get("/api/v1/projects", headers=headers)
         assert response.status_code == 200
         data = response.get_json()
-        assert data["count"] == 2
+        assert data["total"] == 2
+        assert len(data["items"]) == 2
 
     def test_list_projects_unauthorized(self, client, db):
         """Test listing projects without authentication."""

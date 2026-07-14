@@ -310,13 +310,21 @@ def delete_me():
 def list_devices():
     """List all recorded devices/sessions for the current user."""
     user_id = get_jwt_identity()
-    devices = auth_service.list_devices(user_id)
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 20, type=int)
+
+    p = auth_service.list_devices(user_id, page=page, per_page=per_page)
     return (
         jsonify(
             {
                 "status": "success",
-                "devices": device_schema.dump(devices, many=True),
-                "count": len(devices),
+                "items": device_schema.dump(p.items, many=True),
+                "total": p.total,
+                "page": p.page,
+                "per_page": p.per_page,
+                "pages": p.pages,
+                "next_page": p.next_num,
+                "prev_page": p.prev_num,
             }
         ),
         200,

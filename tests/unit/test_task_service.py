@@ -93,9 +93,9 @@ class TestTaskRead:
                 priority="low" if i % 2 == 0 else "high",
             )
 
-        tasks, total = service.list_tasks(verified_user.id)
-        assert len(tasks) == 3
-        assert total == 3
+        p = service.list_tasks(verified_user.id)
+        assert len(p.items) == 3
+        assert p.total == 3
 
     def test_list_tasks_with_status_filter(self, db, verified_user):
         """Test listing tasks filtered by status."""
@@ -111,10 +111,10 @@ class TestTaskRead:
             user_id=verified_user.id, title="Completed Task", status="completed"
         )
 
-        todo_tasks, total = service.list_tasks(verified_user.id, status="todo")
-        assert len(todo_tasks) == 1
-        assert total == 1
-        assert todo_tasks[0].title == "Todo Task"
+        p = service.list_tasks(verified_user.id, status="todo")
+        assert len(p.items) == 1
+        assert p.total == 1
+        assert p.items[0].title == "Todo Task"
 
     def test_list_tasks_with_priority_filter(self, db, verified_user):
         """Test listing tasks filtered by priority."""
@@ -127,13 +127,13 @@ class TestTaskRead:
             user_id=verified_user.id, title="High Priority", priority="high"
         )
 
-        high_tasks, total = service.list_tasks(verified_user.id, priority="high")
-        assert len(high_tasks) == 1
-        assert total == 1
-        assert high_tasks[0].title == "High Priority"
+        p = service.list_tasks(verified_user.id, priority="high")
+        assert len(p.items) == 1
+        assert p.total == 1
+        assert p.items[0].title == "High Priority"
 
     def test_list_tasks_pagination(self, db, verified_user):
-        """Test listing tasks with page and page_size."""
+        """Test listing tasks with page and per_page."""
         service = TaskService()
 
         for i in range(5):
@@ -141,16 +141,17 @@ class TestTaskRead:
                 user_id=verified_user.id, title=f"Task {i}"
             )
 
-        first_page, total = service.list_tasks(verified_user.id, page=1, page_size=2)
-        assert len(first_page) == 2
-        assert total == 5
+        p1 = service.list_tasks(verified_user.id, page=1, per_page=2)
+        assert len(p1.items) == 2
+        assert p1.total == 5
+        assert p1.pages == 3
 
-        second_page, total2 = service.list_tasks(verified_user.id, page=2, page_size=2)
-        assert len(second_page) == 2
-        assert total2 == 5
+        p2 = service.list_tasks(verified_user.id, page=2, per_page=2)
+        assert len(p2.items) == 2
+        assert p2.total == 5
 
         # Ensure they're different tasks
-        assert first_page[0].id != second_page[0].id
+        assert p1.items[0].id != p2.items[0].id
 
 
 class TestTaskUpdate:

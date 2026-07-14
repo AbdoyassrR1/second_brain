@@ -611,8 +611,8 @@ class TestDevices:
         assert response.status_code == 200
         data = response.get_json()
         assert data["status"] == "success"
-        assert "devices" in data
-        assert data["count"] >= 1
+        assert "items" in data
+        assert data["total"] >= 1
 
     def test_delete_device_success(self, client, db, auth_headers):
         """Test DELETE /me/devices/<id> removes a device."""
@@ -621,7 +621,7 @@ class TestDevices:
         # List devices first
         list_resp = client.get("/api/v1/me/devices", headers=headers)
         assert list_resp.status_code == 200
-        devices = list_resp.get_json().get("devices", [])
+        devices = list_resp.get_json().get("items", [])
         if devices:
             device_id = devices[0]["id"]
             response = client.delete(f"/api/v1/me/devices/{device_id}", headers=headers)

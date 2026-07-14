@@ -14,9 +14,9 @@ class ProjectRepository:
         return Project.query.filter_by(id=project_id).first()
 
     @staticmethod
-    def find_by_user_id(user_id):
-        """Find all projects for a user."""
-        return Project.query.filter_by(user_id=user_id).all()
+    def find_by_user_id(user_id, page=1, per_page=20):
+        query = Project.query.filter_by(user_id=user_id)
+        return db.paginate(query, page=page, per_page=per_page, error_out=False)
 
     @staticmethod
     def create(user_id, name, **kwargs):

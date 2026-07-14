@@ -238,8 +238,9 @@ class TestUserDeviceRepository:
         UserDeviceRepository.upsert(verified_user.id, device_name="Device1")
         UserDeviceRepository.upsert(verified_user.id, device_name="Device2")
 
-        devices = UserDeviceRepository.find_by_user(verified_user.id)
-        assert len(devices) == 2
+        p = UserDeviceRepository.find_by_user(verified_user.id)
+        assert len(p.items) == 2
+        assert p.total == 2
 
     def test_delete(self, db, verified_user):
         """Test deleting a device."""
@@ -247,8 +248,9 @@ class TestUserDeviceRepository:
         result = UserDeviceRepository.delete(device.id, verified_user.id)
         assert result is True
 
-        devices = UserDeviceRepository.find_by_user(verified_user.id)
-        assert len(devices) == 0
+        p = UserDeviceRepository.find_by_user(verified_user.id)
+        assert len(p.items) == 0
+        assert p.total == 0
 
     def test_delete_not_found(self, db, verified_user):
         """Test deleting a non-existent device."""

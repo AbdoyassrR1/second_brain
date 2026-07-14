@@ -67,6 +67,10 @@ def create_app(config_name=None):
     cors.init_app(app)
     ma.init_app(app)
 
+    # Initialize Celery
+    from app.jobs.celery_app import init_celery
+    init_celery(app)
+
     # Setup JWT callbacks before routes start using @jwt_required
     register_jwt_callbacks(jwt)
 

@@ -31,11 +31,19 @@ def create_label(json_data):
 def list_labels():
     """List labels for current user."""
     user_id = get_jwt_identity()
-    labels = label_service.list_labels(user_id)
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 20, type=int)
+
+    p = label_service.list_labels(user_id, page=page, per_page=per_page)
     return jsonify({
         "status": "success",
-        "labels": response_schema.dump(labels, many=True),
-        "count": len(labels)
+        "items": response_schema.dump(p.items, many=True),
+        "total": p.total,
+        "page": p.page,
+        "per_page": p.per_page,
+        "pages": p.pages,
+        "next_page": p.next_num,
+        "prev_page": p.prev_num,
     }), 200
 
 

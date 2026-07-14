@@ -344,13 +344,9 @@ class UserDeviceRepository:
         return device
 
     @staticmethod
-    def find_by_user(user_id):
-        """List all recorded devices for a user, most-recent first."""
-        return (
-            UserDevice.query.filter_by(user_id=user_id)
-            .order_by(UserDevice.last_seen.desc())
-            .all()
-        )
+    def find_by_user(user_id, page=1, per_page=20):
+        query = UserDevice.query.filter_by(user_id=user_id).order_by(UserDevice.last_seen.desc())
+        return db.paginate(query, page=page, per_page=per_page, error_out=False)
 
     @staticmethod
     def delete(device_id, user_id):

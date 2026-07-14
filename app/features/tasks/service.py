@@ -127,7 +127,7 @@ class TaskService:
         archived=None,
         sort=None,
         page=1,
-        page_size=20,
+        per_page=20,
     ):
         """List tasks for a user with advanced filtering, sorting, pagination.
 
@@ -145,7 +145,7 @@ class TaskService:
             archived: Show only archived tasks
             sort: Sort specification
             page: Page number
-            page_size: Items per page
+            per_page: Items per page
 
         Returns:
             tuple: (list of Task objects, total count)
@@ -164,7 +164,7 @@ class TaskService:
             archived=archived,
             sort=sort,
             page=page,
-            page_size=page_size,
+            per_page=per_page,
         )
 
     # ── Update ──────────────────────────────────────────────────────────

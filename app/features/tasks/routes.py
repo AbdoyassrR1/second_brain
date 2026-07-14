@@ -50,9 +50,9 @@ def list_tasks():
     archived = request.args.get("archived")
     sort = request.args.get("sort")
     page = request.args.get("page", 1, type=int)
-    page_size = request.args.get("page_size", 20, type=int)
+    per_page = request.args.get("per_page", 20, type=int)
 
-    tasks, total = task_service.list_tasks(
+    p = task_service.list_tasks(
         user_id,
         status=status,
         priority=priority,
@@ -66,18 +66,18 @@ def list_tasks():
         archived=archived,
         sort=sort,
         page=page,
-        page_size=page_size,
+        per_page=per_page,
     )
-
-    pages = (total + page_size - 1) // page_size if page_size > 0 else 0
 
     return jsonify({
         "status": "success",
-        "items": response_schema.dump(tasks, many=True),
-        "page": page,
-        "page_size": page_size,
-        "total": total,
-        "pages": pages,
+        "items": response_schema.dump(p.items, many=True),
+        "total": p.total,
+        "page": p.page,
+        "per_page": p.per_page,
+        "pages": p.pages,
+        "next_page": p.next_num,
+        "prev_page": p.prev_num,
     }), 200
 
 

@@ -32,11 +32,19 @@ def create_project(json_data):
 def list_projects():
     """List projects for current user."""
     user_id = get_jwt_identity()
-    projects = project_service.list_projects(user_id)
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 20, type=int)
+
+    p = project_service.list_projects(user_id, page=page, per_page=per_page)
     return jsonify({
         "status": "success",
-        "projects": response_schema.dump(projects, many=True),
-        "count": len(projects)
+        "items": response_schema.dump(p.items, many=True),
+        "total": p.total,
+        "page": p.page,
+        "per_page": p.per_page,
+        "pages": p.pages,
+        "next_page": p.next_num,
+        "prev_page": p.prev_num,
     }), 200
 
 

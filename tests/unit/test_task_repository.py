@@ -52,43 +52,43 @@ class TestTaskRepository:
         TaskRepository.create(verified_user.id, title="Task 1")
         TaskRepository.create(verified_user.id, title="Task 2")
 
-        tasks, total = TaskRepository.find_by_user_id(verified_user.id)
-        assert total == 2
-        assert len(tasks) == 2
+        p = TaskRepository.find_by_user_id(verified_user.id)
+        assert p.total == 2
+        assert len(p.items) == 2
 
     def test_find_by_user_id_pagination(self, db, verified_user):
         """Test pagination in find_by_user_id."""
         for i in range(5):
             TaskRepository.create(verified_user.id, title=f"Task {i}")
 
-        tasks, total = TaskRepository.find_by_user_id(verified_user.id, page=1, page_size=2)
-        assert total == 5
-        assert len(tasks) == 2
+        p = TaskRepository.find_by_user_id(verified_user.id, page=1, per_page=2)
+        assert p.total == 5
+        assert len(p.items) == 2
 
     def test_find_by_user_id_status_filter(self, db, verified_user):
         """Test status filter in find_by_user_id."""
         TaskRepository.create(verified_user.id, title="Todo", status="todo")
         TaskRepository.create(verified_user.id, title="Completed", status="completed")
 
-        tasks, total = TaskRepository.find_by_user_id(verified_user.id, status="completed")
-        assert total == 1
-        assert tasks[0].title == "Completed"
+        p = TaskRepository.find_by_user_id(verified_user.id, status="completed")
+        assert p.total == 1
+        assert p.items[0].title == "Completed"
 
     def test_find_by_user_id_priority_filter(self, db, verified_user):
         """Test priority filter."""
         TaskRepository.create(verified_user.id, title="High", priority="high")
         TaskRepository.create(verified_user.id, title="Low", priority="low")
 
-        tasks, total = TaskRepository.find_by_user_id(verified_user.id, priority="high")
-        assert total == 1
+        p = TaskRepository.find_by_user_id(verified_user.id, priority="high")
+        assert p.total == 1
 
     def test_find_by_user_id_search(self, db, verified_user):
         """Test search query."""
         TaskRepository.create(verified_user.id, title="Special Project")
         TaskRepository.create(verified_user.id, title="Other Task")
 
-        tasks, total = TaskRepository.find_by_user_id(verified_user.id, q="Special")
-        assert total == 1
+        p = TaskRepository.find_by_user_id(verified_user.id, q="Special")
+        assert p.total == 1
 
     def test_update_task(self, db, verified_user):
         """Test updating a task."""
