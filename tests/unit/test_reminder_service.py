@@ -2,7 +2,7 @@
 """Tests for reminder service business logic."""
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from app.features.reminders.service import ReminderService
 from app.shared.exceptions import NotFoundError
 
@@ -17,7 +17,7 @@ class TestReminderCreate:
         task = task_service.create_task(verified_user.id, title="Task with Reminder")
 
         service = ReminderService()
-        future = datetime.utcnow() + timedelta(hours=1)
+        future = datetime.now(UTC) + timedelta(hours=1)
         reminder = service.create_reminder(task.id, verified_user.id, future)
 
         assert reminder is not None
@@ -42,7 +42,7 @@ class TestPendingReminders:
         task = task_service.create_task(verified_user.id, title="Remind Me")
 
         service = ReminderService()
-        past = datetime.utcnow() - timedelta(minutes=5)
+        past = datetime.now(UTC) - timedelta(minutes=5)
         service.create_reminder(task.id, verified_user.id, past)
 
         pending = service.get_pending_reminders()
@@ -56,7 +56,7 @@ class TestPendingReminders:
 
         service = ReminderService()
         # Use a far-future time to avoid timezone comparison issues with SQLite
-        future = datetime.utcnow() + timedelta(days=365)
+        future = datetime.now(UTC) + timedelta(days=365)
         service.create_reminder(task.id, verified_user.id, future)
 
         pending = service.get_pending_reminders()
@@ -69,7 +69,7 @@ class TestPendingReminders:
         task = task_service.create_task(verified_user.id, title="Sent Reminder")
 
         service = ReminderService()
-        past = datetime.utcnow() - timedelta(minutes=5)
+        past = datetime.now(UTC) - timedelta(minutes=5)
         reminder = service.create_reminder(task.id, verified_user.id, past)
         service.mark_sent(reminder.id)
 
@@ -87,7 +87,7 @@ class TestMarkSent:
         task = task_service.create_task(verified_user.id, title="Task")
 
         service = ReminderService()
-        future = datetime.utcnow() + timedelta(hours=1)
+        future = datetime.now(UTC) + timedelta(hours=1)
         reminder = service.create_reminder(task.id, verified_user.id, future)
 
         updated = service.mark_sent(reminder.id)

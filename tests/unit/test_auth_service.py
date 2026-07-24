@@ -2,7 +2,7 @@
 """Tests for auth service business logic."""
 
 import pytest
-from datetime import timedelta
+from datetime import timedelta, UTC
 
 from app.extensions import db as _db
 from app.features.auth.service import AuthService, validate_password_strength
@@ -205,7 +205,7 @@ class TestAccountLockout:
         from datetime import datetime, timedelta
         service.user_repo.lock_account(
             verified_user.id,
-            datetime.utcnow() + timedelta(minutes=5),
+            datetime.now(UTC) + timedelta(minutes=5),
         )
 
         with pytest.raises(UnauthorizedError) as exc_info:
@@ -290,7 +290,7 @@ class TestPasswordReset:
         # Lock the account
         from datetime import datetime, timedelta
         service.user_repo.lock_account(
-            verified_user.id, datetime.utcnow() + timedelta(minutes=10),
+            verified_user.id, datetime.now(UTC) + timedelta(minutes=10),
         )
         service.user_repo.increment_failed_attempts(verified_user.id)
 

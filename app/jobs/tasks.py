@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, UTC
 from app.features.reminders.repository import ReminderRepository
 from app.features.mail.service import MailService
 from .celery_app import celery_app
@@ -21,6 +21,7 @@ def send_reminder(self, reminder_id):
     task = Task.query.get(reminder.task_id)
 
     if not user or not task:
+        repo.mark_failed(reminder_id)
         return {"error": "User or task not found", "reminder_id": reminder_id}
 
     mail_service = MailService()
@@ -33,7 +34,11 @@ def send_reminder(self, reminder_id):
         repo.mark_sent(reminder_id)
         return {"sent": True, "reminder_id": reminder_id, "email": user.email}
     except Exception as exc:
-        raise self.retry(exc=exc)
+        try:
+            raise self.retry(exc=exc)
+        except Exception:
+            repo.mark_failed(reminder_id)
+            return {"error": "Max retries exceeded", "reminder_id": reminder_id}
 
 
 @celery_app.task
@@ -45,3 +50,42 @@ def dispatch_due_reminders():
         send_reminder.delay(reminder.id)
         count += 1
     return {"dispatched": count}
+
+
+@celery_app.task
+def cleanup_old_reminders(days=30):
+    from datetime import datetime, timedelta as td
+    from app.extensions import db
+    from app.features.reminders.models import Reminder
+
+    cutoff = datetime.now(UTC) - td(days=days)
+    deleted = Reminder.query.filter(
+        Reminder.is_sent == 1, Reminder.created_at < cutoff
+    ).delete()
+    db.session.commit()
+    return {"deleted": deleted}
+
+
+@celery_app.task
+def daily_summary():
+    from app.features.auth.models import User
+    from app.features.tasks.repository import TaskRepository
+    from app.features.mail.service import MailService
+
+    users = User.query.filter(User.is_deleted.is_(False)).all()
+    mail_service = MailService()
+    sent = 0
+    for user in users:
+        p = TaskRepository.find_by_user_id(user.id)
+        if p.total == 0:
+            continue
+        task_lines = "\n".join(
+            f"- {t.title} [{t.status}]" for t in p.items
+        )
+        mail_service.send_email(
+            subject="Your Daily Summary — Second Brain",
+            recipients=[user.email],
+            body=f"Hi {user.username},\n\nYou have {p.total} task(s):\n\n{task_lines}\n\n— Second Brain",
+        )
+        sent += 1
+    return {"summary_sent": sent}

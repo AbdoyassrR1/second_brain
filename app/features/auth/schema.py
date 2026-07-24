@@ -2,6 +2,7 @@
 """Auth schemas for validation and serialization."""
 
 from marshmallow import Schema, fields, validate, validates_schema, ValidationError
+from app.shared.fields import UTCDateTime
 
 # Reusable strength validator: ≥8 chars, ≥1 lower, ≥1 upper, ≥1 digit.
 PASSWORD_STRENGTH = [
@@ -132,9 +133,9 @@ class UserProfileSchema(Schema):
     city = fields.Str(allow_none=True)
     is_active = fields.Bool()
     is_verified = fields.Bool()
-    last_login = fields.DateTime(allow_none=True)
-    created_at = fields.DateTime(dump_only=True)
-    updated_at = fields.DateTime(dump_only=True)
+    last_login = UTCDateTime(allow_none=True)
+    created_at = UTCDateTime(dump_only=True)
+    updated_at = UTCDateTime(dump_only=True)
     role_id = fields.Int()
 
 
@@ -145,8 +146,8 @@ class UserDeviceSchema(Schema):
     device_name = fields.Str(allow_none=True)
     user_agent = fields.Str(allow_none=True)
     ip_address = fields.Str(allow_none=True)
-    last_seen = fields.DateTime()
-    created_at = fields.DateTime(dump_only=True)
+    last_seen = UTCDateTime()
+    created_at = UTCDateTime(dump_only=True)
 
 
 class Enable2FASchema(Schema):

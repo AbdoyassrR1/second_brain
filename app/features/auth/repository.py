@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 """Auth repository for database operations."""
 
-from datetime import datetime
+from datetime import datetime, UTC
 from sqlalchemy import and_
 from app.extensions import db
 from .models import User, Role, VerificationToken, ResetToken, TokenBlocklist, UserDevice
@@ -73,7 +73,7 @@ class UserRepository:
             for key, value in kwargs.items():
                 if hasattr(user, key):
                     setattr(user, key, value)
-            user.updated_at = datetime.utcnow()
+            user.updated_at = datetime.now(UTC)
             db.session.commit()
         return user
 
@@ -112,7 +112,7 @@ class UserRepository:
         user = User.query.filter_by(id=user_id).first()
         if user:
             user.is_deleted = True
-            user.deleted_at = datetime.utcnow()
+            user.deleted_at = datetime.now(UTC)
             db.session.commit()
         return user
 
@@ -200,7 +200,7 @@ class VerificationTokenRepository:
             and_(
                 VerificationToken.token == token,
                 VerificationToken.is_used.is_(False),
-                VerificationToken.expiry_date > datetime.utcnow(),
+                VerificationToken.expiry_date > datetime.now(UTC),
             )
         ).first()
 
@@ -255,7 +255,7 @@ class ResetTokenRepository:
             and_(
                 ResetToken.token == token,
                 ResetToken.is_used.is_(False),
-                ResetToken.expiry_date > datetime.utcnow(),
+                ResetToken.expiry_date > datetime.now(UTC),
             )
         ).first()
 
@@ -326,7 +326,7 @@ class UserDeviceRepository:
         device = UserDevice.query.filter_by(
             user_id=user_id, device_name=device_name
         ).first()
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         if device is None:
             device = UserDevice(
                 user_id=user_id,

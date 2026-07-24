@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 """Tasks service for business logic."""
 
-from datetime import datetime
+from datetime import datetime, UTC
 from app.shared.exceptions import NotFoundError, ForbiddenError, ValidationError
 from app.shared.logging.audit_log import (
     log_task_create, log_task_delete, log_task_complete,
@@ -188,7 +188,7 @@ class TaskService:
 
             # Auto-set or clear completed_at based on status
             if new_status == "completed":
-                kwargs["completed_at"] = datetime.utcnow()
+                kwargs["completed_at"] = datetime.now(UTC)
             elif task.status == "completed" and new_status != "completed":
                 # Reopening a completed task
                 kwargs["completed_at"] = None
@@ -253,7 +253,7 @@ class TaskService:
             return task
 
         updated_task = self.repository.update(
-            task_id, status="completed", completed_at=datetime.utcnow()
+            task_id, status="completed", completed_at=datetime.now(UTC)
         )
         log_task_complete(user_id, task_id)
         tasks_completed_total.inc()

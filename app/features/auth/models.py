@@ -3,7 +3,7 @@
 
 import random
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 from sqlalchemy import Column, String, Boolean, DateTime, Enum, Text, Date, Integer, ForeignKey
 from sqlalchemy.orm import relationship
@@ -38,7 +38,7 @@ class User(BaseModel):
     pending_email = Column(String(255), nullable=True)
     password = Column(String(255), nullable=False)
     otp_code = Column(String(6), nullable=True)
-    otp_expiry = Column(DateTime, nullable=True)
+    otp_expiry = Column(DateTime(timezone=True), nullable=True)
     phone_number = Column(String(20), nullable=False, unique=True)
     first_name = Column(String(20), nullable=True)
     last_name = Column(String(20), nullable=True)
@@ -48,14 +48,14 @@ class User(BaseModel):
     country = Column(String(15), nullable=True)
     city = Column(String(20), nullable=True)
     is_verified = Column(Boolean, default=False, nullable=False)
-    verified_at = Column(DateTime, nullable=True)
+    verified_at = Column(DateTime(timezone=True), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
-    last_login = Column(DateTime, default=lambda: datetime.now(), nullable=True)
-    updated_at = Column(DateTime, default=lambda: datetime.now())
+    last_login = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=True)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     # Account security / lockout
     failed_attempts = Column(Integer, default=0, nullable=False)
-    locked_until = Column(DateTime, nullable=True)
+    locked_until = Column(DateTime(timezone=True), nullable=True)
 
     # Token version — bumped to invalidate ALL outstanding tokens for a user
     # (logout-all, password change, account deletion). Each issued JWT carries
@@ -66,7 +66,7 @@ class User(BaseModel):
 
     # Soft delete tombstone (account deletion)
     is_deleted = Column(Boolean, default=False, nullable=False)
-    deleted_at = Column(DateTime, nullable=True)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     # ForeignKeys
     role_id = Column(Integer, ForeignKey("roles.id"), nullable=False)
@@ -89,11 +89,14 @@ class User(BaseModel):
     
     def generate_otp(self):
         self.otp_code = str(random.randint(100000, 999999))  # 6-digit code
-        self.otp_expiry = datetime.utcnow() + timedelta(minutes=5)  # valid for 5 minutes
+        self.otp_expiry = datetime.now(UTC) + timedelta(minutes=5)  # valid for 5 minutes
         return self.otp_code
 
     def verify_otp(self, code):
-        return self.otp_code == code and self.otp_expiry and self.otp_expiry > datetime.utcnow()
+        expiry = self.otp_expiry
+        if expiry is not None and expiry.tzinfo is None:
+            expiry = expiry.replace(tzinfo=UTC)
+        return self.otp_code == code and expiry and expiry > datetime.now(UTC)
 
 
 class ResetToken(db.Model):
@@ -103,16 +106,16 @@ class ResetToken(db.Model):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     token = Column(String(260), nullable=False, unique=True)
-    timestamp = Column(DateTime, default=lambda: datetime.now())
+    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     is_used = Column(Boolean, default=False, nullable=False)
-    expiry_date = Column(DateTime, nullable=False)
+    expiry_date = Column(DateTime(timezone=True), nullable=False)
 
     # ForeignKeys
     user_id = Column(String(50), ForeignKey("users.id"), nullable=False)
 
     def set_expiry_date(self, minutes):
         """Set token expiration."""
-        self.timestamp = datetime.now()
+        self.timestamp = datetime.now(UTC)
         self.expiry_date = self.timestamp + timedelta(minutes=minutes)
 
 
@@ -123,16 +126,16 @@ class VerificationToken(db.Model):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     token = Column(String(260), nullable=False, unique=True)
-    timestamp = Column(DateTime, default=lambda: datetime.now())
+    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     is_used = Column(Boolean, default=False, nullable=False)
-    expiry_date = Column(DateTime, nullable=False)
+    expiry_date = Column(DateTime(timezone=True), nullable=False)
 
     # ForeignKeys
     user_id = Column(String(50), ForeignKey("users.id"), nullable=False)
 
     def set_expiry_date(self, minutes):
         """Set token expiration."""
-        self.timestamp = datetime.now()
+        self.timestamp = datetime.now(UTC)
         self.expiry_date = self.timestamp + timedelta(minutes=minutes)
 
 
@@ -148,9 +151,9 @@ class TokenBlocklist(db.Model):
     id = Column(Integer, primary_key=True, autoincrement=True)
     jti = Column(String(36), nullable=False, unique=True, index=True)
     token_type = Column(String(10), nullable=False)  # "access" or "refresh"
-    created_at = Column(DateTime, default=lambda: datetime.now())
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     # When the original token would have naturally expired — safe to purge after this.
-    expires_at = Column(DateTime, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
 
     # ForeignKeys
     user_id = Column(String(50), ForeignKey("users.id"), nullable=False, index=True)
@@ -163,7 +166,7 @@ class UserDevice(BaseModel):
     device_name = Column(String(120), nullable=True)
     user_agent = Column(Text, nullable=True)
     ip_address = Column(String(45), nullable=True)  # IPv6-capable
-    last_seen = Column(DateTime, default=lambda: datetime.now())
+    last_seen = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     # ForeignKeys
     user_id = Column(String(50), ForeignKey("users.id"), nullable=False, index=True)

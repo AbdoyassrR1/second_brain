@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 """Tasks repository for database operations."""
 
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, UTC
 from sqlalchemy import or_, and_, func, case
 from app.extensions import db
 from .models import Task, task_labels
@@ -153,7 +153,7 @@ class TaskRepository:
         task = Task.query.filter_by(id=task_id).first()
         if task:
             task.is_deleted = True
-            task.deleted_at = datetime.utcnow()
+            task.deleted_at = datetime.now(UTC)
             db.session.commit()
             return True
         return False
@@ -175,7 +175,7 @@ class TaskRepository:
         task = Task.query.filter_by(id=task_id).first()
         if task:
             task.is_archived = True
-            task.archived_at = datetime.utcnow()
+            task.archived_at = datetime.now(UTC)
             db.session.commit()
             return True
         return False
@@ -238,7 +238,7 @@ class TaskRepository:
             Task.user_id == user_id,
             Task.is_deleted == False,
         ).all()
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         for task in tasks:
             task.is_deleted = True
             task.deleted_at = now
@@ -253,7 +253,7 @@ class TaskRepository:
             Task.user_id == user_id,
             Task.is_deleted == False,
         ).all()
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         for task in tasks:
             task.is_archived = True
             task.archived_at = now
@@ -296,7 +296,7 @@ class TaskRepository:
             Task.user_id == user_id,
             Task.is_deleted == False,
         ).all()
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         for task in tasks:
             task.status = "completed"
             task.completed_at = now

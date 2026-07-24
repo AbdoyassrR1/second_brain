@@ -34,13 +34,13 @@ class Task(BaseModel):
         nullable=False,
     )
     due_date = Column(Date, nullable=True)
-    completed_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
 
     # Archive / Soft delete columns
     is_archived = Column(Boolean, default=False, nullable=False)
-    archived_at = Column(DateTime, nullable=True)
+    archived_at = Column(DateTime(timezone=True), nullable=True)
     is_deleted = Column(Boolean, default=False, nullable=False)
-    deleted_at = Column(DateTime, nullable=True)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     # ForeignKeys
     user_id = Column(String(50), ForeignKey("users.id"), nullable=False)

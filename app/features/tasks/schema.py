@@ -2,6 +2,7 @@
 """Tasks schemas for validation and serialization."""
 
 from marshmallow import Schema, fields, validate
+from app.shared.fields import UTCDateTime
 
 
 class TaskCreateSchema(Schema):
@@ -49,13 +50,13 @@ class TaskResponseSchema(Schema):
     status = fields.Str()
     priority = fields.Str()
     due_date = fields.Date(allow_none=True)
-    completed_at = fields.DateTime(allow_none=True)
+    completed_at = UTCDateTime(allow_none=True)
     is_archived = fields.Bool()
-    archived_at = fields.DateTime(allow_none=True)
+    archived_at = UTCDateTime(allow_none=True)
     is_deleted = fields.Bool(dump_only=True)
-    deleted_at = fields.DateTime(allow_none=True, dump_only=True)
-    created_at = fields.DateTime(dump_only=True)
-    updated_at = fields.DateTime(dump_only=True)
+    deleted_at = UTCDateTime(allow_none=True, dump_only=True)
+    created_at = UTCDateTime(dump_only=True)
+    updated_at = UTCDateTime(dump_only=True)
     user_id = fields.Str()
     project_id = fields.Str(allow_none=True)
     parent_task_id = fields.Str(allow_none=True)

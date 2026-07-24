@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 """Auth routes and endpoints."""
 
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
 from flask import Blueprint, request, jsonify, current_app
 from app.extensions import limiter
@@ -150,7 +150,7 @@ def refresh():
     refresh_claims = get_jwt()
     refresh_jti = refresh_claims["jti"]
     old_expires_at = datetime.fromtimestamp(
-        refresh_claims.get("exp", 0), tz=timezone.utc
+        refresh_claims.get("exp", 0), tz=UTC
     )
 
     user = auth_service.rotate_refresh_token(user_id, refresh_jti, old_expires_at)
@@ -177,7 +177,7 @@ def logout():
     user_id = get_jwt_identity()
     token_data = get_jwt()
     jti = token_data["jti"]
-    expires_at = datetime.fromtimestamp(token_data.get("exp", 0), tz=timezone.utc)
+    expires_at = datetime.fromtimestamp(token_data.get("exp", 0), tz=UTC)
 
     auth_service.revoke_token(jti, "access", user_id, expires_at)
     return jsonify({"status": "success", "message": "Logout successful"}), 200

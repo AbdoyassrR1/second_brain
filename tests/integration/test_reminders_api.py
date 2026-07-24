@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 
 class TestReminderCreate:
@@ -10,7 +10,7 @@ class TestReminderCreate:
         )
         task_id = task_resp.get_json()["task"]["id"]
 
-        future = (datetime.utcnow() + timedelta(hours=1)).isoformat()
+        future = (datetime.now(UTC) + timedelta(hours=1)).isoformat()
         response = client.post(
             "/api/v1/reminders",
             headers=headers,
@@ -25,7 +25,7 @@ class TestReminderCreate:
     def test_create_reminder_unauthorized(self, client, db):
         response = client.post(
             "/api/v1/reminders",
-            json={"task_id": "some-id", "reminder_time": datetime.utcnow().isoformat()},
+            json={"task_id": "some-id", "reminder_time": datetime.now(UTC).isoformat()},
         )
         assert response.status_code == 401
 
@@ -65,7 +65,7 @@ class TestReminderList:
         )
         task_id = task_resp.get_json()["task"]["id"]
 
-        future = (datetime.utcnow() + timedelta(hours=1)).isoformat()
+        future = (datetime.now(UTC) + timedelta(hours=1)).isoformat()
         client.post(
             "/api/v1/reminders",
             headers=headers,
@@ -86,7 +86,7 @@ class TestReminderList:
         )
         task_id = task_resp.get_json()["task"]["id"]
 
-        future = (datetime.utcnow() + timedelta(hours=1)).isoformat()
+        future = (datetime.now(UTC) + timedelta(hours=1)).isoformat()
         for _ in range(3):
             client.post(
                 "/api/v1/reminders",
@@ -116,7 +116,7 @@ class TestReminderGet:
         )
         task_id = task_resp.get_json()["task"]["id"]
 
-        future = (datetime.utcnow() + timedelta(hours=1)).isoformat()
+        future = (datetime.now(UTC) + timedelta(hours=1)).isoformat()
         create_resp = client.post(
             "/api/v1/reminders",
             headers=headers,
@@ -142,7 +142,7 @@ class TestReminderGet:
         )
         task_id = task_resp.get_json()["task"]["id"]
 
-        future = (datetime.utcnow() + timedelta(hours=1)).isoformat()
+        future = (datetime.now(UTC) + timedelta(hours=1)).isoformat()
         create_resp = client.post(
             "/api/v1/reminders",
             headers=headers,
@@ -162,7 +162,7 @@ class TestReminderUpdate:
         )
         task_id = task_resp.get_json()["task"]["id"]
 
-        future = (datetime.utcnow() + timedelta(hours=1)).isoformat()
+        future = (datetime.now(UTC) + timedelta(hours=1)).isoformat()
         create_resp = client.post(
             "/api/v1/reminders",
             headers=headers,
@@ -170,7 +170,7 @@ class TestReminderUpdate:
         )
         reminder_id = create_resp.get_json()["reminder"]["id"]
 
-        new_time = (datetime.utcnow() + timedelta(hours=2)).isoformat()
+        new_time = (datetime.now(UTC) + timedelta(hours=2)).isoformat()
         response = client.patch(
             f"/api/v1/reminders/{reminder_id}",
             headers=headers,
@@ -185,7 +185,7 @@ class TestReminderUpdate:
         response = client.patch(
             "/api/v1/reminders/nonexistent-id",
             headers=headers,
-            json={"reminder_time": datetime.utcnow().isoformat()},
+            json={"reminder_time": datetime.now(UTC).isoformat()},
         )
         assert response.status_code == 404
 
@@ -196,7 +196,7 @@ class TestReminderUpdate:
         )
         task_id = task_resp.get_json()["task"]["id"]
 
-        future = (datetime.utcnow() + timedelta(hours=1)).isoformat()
+        future = (datetime.now(UTC) + timedelta(hours=1)).isoformat()
         create_resp = client.post(
             "/api/v1/reminders",
             headers=headers,
@@ -230,7 +230,7 @@ class TestReminderDelete:
         )
         task_id = task_resp.get_json()["task"]["id"]
 
-        future = (datetime.utcnow() + timedelta(hours=1)).isoformat()
+        future = (datetime.now(UTC) + timedelta(hours=1)).isoformat()
         create_resp = client.post(
             "/api/v1/reminders",
             headers=headers,
@@ -257,7 +257,7 @@ class TestReminderDelete:
         )
         task_id = task_resp.get_json()["task"]["id"]
 
-        future = (datetime.utcnow() + timedelta(hours=1)).isoformat()
+        future = (datetime.now(UTC) + timedelta(hours=1)).isoformat()
         create_resp = client.post(
             "/api/v1/reminders",
             headers=headers,

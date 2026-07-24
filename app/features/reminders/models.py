@@ -2,7 +2,7 @@
 """Reminders feature models."""
 
 from sqlalchemy import Column, String, DateTime, ForeignKey, Integer, Boolean
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from app.shared.models import BaseModel
 
 
@@ -11,7 +11,7 @@ class Reminder(BaseModel):
 
     __tablename__ = "reminders"
 
-    reminder_time = Column(DateTime, nullable=False)
+    reminder_time = Column(DateTime(timezone=True), nullable=False)
     is_sent = Column(Integer, default=0, nullable=False)  # 0 = pending, 1 = sent, 2 = failed
 
     # ForeignKeys
@@ -23,4 +23,4 @@ class Reminder(BaseModel):
 
     def set_expiry(self, minutes=15):
         """Set reminder expiration time."""
-        self.expiry_date = datetime.now() + timedelta(minutes=minutes)
+        self.expiry_date = datetime.now(UTC) + timedelta(minutes=minutes)

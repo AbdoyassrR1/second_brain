@@ -2,7 +2,7 @@
 """Audit logging for security and compliance events."""
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from flask import g, request
 
 audit_logger = logging.getLogger("audit")
@@ -30,7 +30,7 @@ def log_audit_event(event_type, user_id=None, success=True, details=None):
             "success": success,
             "remote_addr": request.remote_addr if request else None,
             "user_agent": request.headers.get("User-Agent") if request else None,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             **details,
         },
     )

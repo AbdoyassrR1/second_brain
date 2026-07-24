@@ -3,12 +3,12 @@
 
 from flask import Blueprint, jsonify, current_app, request
 from app.extensions import db
-from datetime import datetime
+from datetime import datetime, UTC
 from sqlalchemy import text
 import threading
 
 health_bp = Blueprint("health", __name__, url_prefix="/api/v1/monitor")
-app_start_time = datetime.now()
+app_start_time = datetime.now(UTC)
 
 
 def _run_with_timeout(fn, timeout=1.0):
@@ -16,7 +16,7 @@ def _run_with_timeout(fn, timeout=1.0):
     result = {}
 
     def target():
-        start = datetime.now()
+        start = datetime.now(UTC)
         try:
             r = fn()
             result["ok"] = True
@@ -24,7 +24,7 @@ def _run_with_timeout(fn, timeout=1.0):
         except Exception as e:
             result["ok"] = False
             result["value"] = e
-        result["elapsed"] = (datetime.now() - start).total_seconds()
+        result["elapsed"] = (datetime.now(UTC) - start).total_seconds()
 
     t = threading.Thread(target=target)
     t.daemon = True
@@ -38,7 +38,7 @@ def _run_with_timeout(fn, timeout=1.0):
 @health_bp.route("/liveness", methods=["GET"])
 def liveness_check():
     """Liveness: process is alive. Lightweight check."""
-    return jsonify({"status": "alive", "timestamp": datetime.now().isoformat()}), 200
+    return jsonify({"status": "alive", "timestamp": datetime.now(UTC).isoformat()}), 200
 
 
 @health_bp.route("/health", methods=["GET"])
@@ -54,10 +54,10 @@ def health_check():
 
         ok, val, elapsed = _run_with_timeout(db_check, timeout=1.0)
 
-        uptime = (datetime.now() - app_start_time).total_seconds()
+        uptime = (datetime.now(UTC) - app_start_time).total_seconds()
         payload = {
             "status": "ok" if ok else "degraded",
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "uptime_seconds": uptime,
             "dependencies": {
                 "database": {
@@ -76,7 +76,7 @@ def health_check():
             jsonify(
                 {
                     "status": "error",
-                    "timestamp": datetime.now().isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                     "message": "Service unavailable",
                 }
             ),

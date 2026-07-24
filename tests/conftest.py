@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 """Shared test configuration and fixtures."""
 
-from datetime import datetime
+from datetime import datetime, UTC
 
 import pytest
 from app import create_app
@@ -67,7 +67,7 @@ def verified_user(db):
         phone_number="1234567890",
         role_id=role.id,
         is_verified=True,
-        verified_at=datetime.utcnow(),
+        verified_at=datetime.now(UTC),
         is_active=True,
     )
     user.set_password("Password123")

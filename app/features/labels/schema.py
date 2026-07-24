@@ -2,6 +2,7 @@
 """Labels schemas for validation and serialization."""
 
 from marshmallow import Schema, fields, validate
+from app.shared.fields import UTCDateTime
 
 
 class LabelCreateSchema(Schema):
@@ -17,6 +18,6 @@ class LabelResponseSchema(Schema):
     id = fields.Str(dump_only=True)
     name = fields.Str()
     color = fields.Str(allow_none=True)
-    created_at = fields.DateTime(dump_only=True)
-    updated_at = fields.DateTime(dump_only=True)
+    created_at = UTCDateTime(dump_only=True)
+    updated_at = UTCDateTime(dump_only=True)
     user_id = fields.Str()

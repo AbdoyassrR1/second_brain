@@ -1,6 +1,8 @@
 import os
+from datetime import timedelta
 from dotenv import load_dotenv
 from celery import Celery
+from celery.schedules import crontab
 from flask import Flask
 
 load_dotenv()
@@ -8,6 +10,21 @@ load_dotenv()
 _celery_broker = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/1")
 
 celery_app = Celery("second_brain", broker=_celery_broker, backend=_celery_broker)
+
+celery_app.conf.beat_schedule = {
+    "dispatch-due-reminders": {
+        "task": "app.jobs.tasks.dispatch_due_reminders",
+        "schedule": timedelta(seconds=30),
+    },
+    "cleanup-old-reminders": {
+        "task": "app.jobs.tasks.cleanup_old_reminders",
+        "schedule": crontab(hour=0, minute=0),
+    },
+    "daily-summary": {
+        "task": "app.jobs.tasks.daily_summary",
+        "schedule": crontab(hour=8, minute=0),
+    },
+}
 
 
 class FlaskContextTask(celery_app.Task):

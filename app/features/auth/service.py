@@ -3,7 +3,7 @@
 
 import re
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 from flask import current_app, g, request
 from flask_jwt_extended import create_access_token
 from app.shared.exceptions import (
@@ -119,7 +119,7 @@ class AuthService:
         """Create and send a verification token for a user."""
         token = secrets.token_urlsafe(32)
         expiry_minutes = current_app.config.get("EMAIL_VERIFICATION_TOKEN_EXPIRES_MINUTES", 30)
-        expiry_date = datetime.utcnow() + timedelta(minutes=expiry_minutes)
+        expiry_date = datetime.now(UTC) + timedelta(minutes=expiry_minutes)
 
         self.verification_token_repo.invalidate_user_tokens(user.id)
         self.verification_token_repo.create(user.id, token, expiry_date)
@@ -161,7 +161,7 @@ class AuthService:
             user.pending_email = None
 
         user.is_verified = True
-        user.verified_at = datetime.utcnow()
+        user.verified_at = datetime.now(UTC)
         verification_token.is_used = True
         db.session.commit()
 
@@ -196,11 +196,14 @@ class AuthService:
             raise UnauthorizedError("Invalid email or password")
 
         # ── Account lockout check ──
-        if user.locked_until and user.locked_until > datetime.utcnow():
+        locked_until = user.locked_until
+        if locked_until is not None and locked_until.tzinfo is None:
+            locked_until = locked_until.replace(tzinfo=UTC)
+        if locked_until and locked_until > datetime.now(UTC):
             log_auth_failure(identity, "account_locked")
             auth_failures_total.labels(reason="account_locked").inc()
             user_logins_total.labels(success="false").inc()
-            remaining = (user.locked_until - datetime.utcnow()).seconds
+            remaining = (locked_until - datetime.now(UTC)).seconds
             raise UnauthorizedError(
                 f"Account temporarily locked. Try again in {remaining} seconds."
             )
@@ -211,7 +214,7 @@ class AuthService:
 
             if failed >= max_attempts:
                 lockout_minutes = current_app.config.get("ACCOUNT_LOCKOUT_MINUTES", 15)
-                locked_until = datetime.utcnow() + timedelta(minutes=lockout_minutes)
+                locked_until = datetime.now(UTC) + timedelta(minutes=lockout_minutes)
                 self.user_repo.lock_account(user.id, locked_until)
                 log_account_locked(user.id, locked_until)
                 from app.shared.metrics import account_lockouts_total
@@ -237,7 +240,7 @@ class AuthService:
         # ── Successful login ──
         self.user_repo.reset_failed_attempts(user.id)
 
-        user.last_login = datetime.utcnow()
+        user.last_login = datetime.now(UTC)
         db.session.commit()
 
         # Record device
@@ -366,7 +369,7 @@ class AuthService:
 
         token = secrets.token_urlsafe(32)
         expiry_minutes = current_app.config.get("PASSWORD_RESET_TOKEN_EXPIRES_MINUTES", 15)
-        expiry_date = datetime.utcnow() + timedelta(minutes=expiry_minutes)
+        expiry_date = datetime.now(UTC) + timedelta(minutes=expiry_minutes)
 
         self.reset_token_repo.invalidate_user_tokens(user.id)
         self.reset_token_repo.create(user.id, token, expiry_date)

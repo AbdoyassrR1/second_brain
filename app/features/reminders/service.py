@@ -49,3 +49,9 @@ class ReminderService:
         if not reminder:
             raise NotFoundError("Reminder not found")
         return reminder
+
+    def mark_failed(self, reminder_id):
+        reminder = self.repository.mark_failed(reminder_id)
+        if not reminder:
+            raise NotFoundError("Reminder not found")
+        return reminder
