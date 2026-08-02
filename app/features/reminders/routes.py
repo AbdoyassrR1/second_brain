@@ -2,12 +2,13 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.shared.decorators import require_json_body
 from .service import ReminderService
-from .schema import ReminderSchema, ReminderUpdateSchema
+from .schema import ReminderSchema, ReminderUpdateSchema, ReminderListQuerySchema
 
 reminders_bp = Blueprint("reminders", __name__, url_prefix="/api/v1/reminders")
 reminder_service = ReminderService()
 schema = ReminderSchema()
 update_schema = ReminderUpdateSchema()
+list_query_schema = ReminderListQuerySchema()
 
 
 @reminders_bp.route("", methods=["POST"])
@@ -24,9 +25,10 @@ def create_reminder(json_data):
 @jwt_required()
 def list_reminders():
     user_id = get_jwt_identity()
-    status = request.args.get("status", type=int)
-    page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 20, type=int)
+    query_data = list_query_schema.load(request.args.to_dict())
+    status = query_data.get("status")
+    page = query_data["page"]
+    per_page = query_data["per_page"]
 
     p = reminder_service.list_reminders(user_id, status=status, page=page, per_page=per_page)
 

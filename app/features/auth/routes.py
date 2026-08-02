@@ -15,6 +15,7 @@ from flask_jwt_extended import (
 )
 
 from app.shared.decorators import require_json_body
+from app.shared.schemas.query_schemas import PaginationQuerySchema
 from .service import AuthService
 from .schema import (
     UserRegistrationSchema,
@@ -37,6 +38,7 @@ auth_bp = Blueprint("auth", __name__, url_prefix="/api/v1/auth")
 me_bp = Blueprint("me", __name__, url_prefix="/api/v1/me")
 
 auth_service = AuthService()
+pagination_schema = PaginationQuerySchema()
 
 # Schema instances (reuse across requests)
 registration_schema = UserRegistrationSchema()
@@ -310,8 +312,9 @@ def delete_me():
 def list_devices():
     """List all recorded devices/sessions for the current user."""
     user_id = get_jwt_identity()
-    page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 20, type=int)
+    query_data = pagination_schema.load(request.args.to_dict())
+    page = query_data["page"]
+    per_page = query_data["per_page"]
 
     p = auth_service.list_devices(user_id, page=page, per_page=per_page)
     return (

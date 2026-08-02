@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 """Reminders feature models."""
 
-from sqlalchemy import Column, String, DateTime, ForeignKey, Integer, Boolean
+from sqlalchemy import Column, String, DateTime, ForeignKey, Enum
 from datetime import datetime, timedelta, UTC
 from app.shared.models import BaseModel
 
@@ -12,7 +12,16 @@ class Reminder(BaseModel):
     __tablename__ = "reminders"
 
     reminder_time = Column(DateTime(timezone=True), nullable=False)
-    is_sent = Column(Integer, default=0, nullable=False)  # 0 = pending, 1 = sent, 2 = failed
+    is_sent = Column(
+        Enum(
+            "pending",
+            "sent",
+            "failed",
+            name="reminder_status",
+        ),
+        default="pending",
+        nullable=False,
+    )
 
     # ForeignKeys
     task_id = Column(String(50), ForeignKey("tasks.id"), nullable=False)

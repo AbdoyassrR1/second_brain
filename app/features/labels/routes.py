@@ -5,6 +5,7 @@ from flask import Blueprint, jsonify, request, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.extensions import limiter
 from app.shared.decorators import require_json_body
+from app.shared.schemas.query_schemas import PaginationQuerySchema
 from .service import LabelService
 from .schema import LabelCreateSchema, LabelResponseSchema
 
@@ -12,6 +13,7 @@ labels_bp = Blueprint("labels", __name__, url_prefix="/api/v1/labels")
 label_service = LabelService()
 create_schema = LabelCreateSchema()
 response_schema = LabelResponseSchema()
+pagination_schema = PaginationQuerySchema()
 
 
 @labels_bp.route("", methods=["POST"])
@@ -31,8 +33,9 @@ def create_label(json_data):
 def list_labels():
     """List labels for current user."""
     user_id = get_jwt_identity()
-    page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 20, type=int)
+    query_data = pagination_schema.load(request.args.to_dict())
+    page = query_data["page"]
+    per_page = query_data["per_page"]
 
     p = label_service.list_labels(user_id, page=page, per_page=per_page)
     return jsonify({

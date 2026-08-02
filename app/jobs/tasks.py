@@ -1,4 +1,4 @@
-from datetime import datetime, UTC
+from datetime import datetime, UTC, timedelta
 from app.features.reminders.repository import ReminderRepository
 from app.features.mail.service import MailService
 from .celery_app import celery_app
@@ -11,7 +11,7 @@ def send_reminder(self, reminder_id):
     if not reminder:
         return {"error": "Reminder not found", "reminder_id": reminder_id}
 
-    if reminder.is_sent:
+    if reminder.is_sent == "sent":
         return {"skipped": "Already sent", "reminder_id": reminder_id}
 
     from app.features.auth.models import User
@@ -54,13 +54,12 @@ def dispatch_due_reminders():
 
 @celery_app.task
 def cleanup_old_reminders(days=30):
-    from datetime import datetime, timedelta as td
     from app.extensions import db
     from app.features.reminders.models import Reminder
 
-    cutoff = datetime.now(UTC) - td(days=days)
+    cutoff = datetime.now(UTC) - timedelta(days=days)
     deleted = Reminder.query.filter(
-        Reminder.is_sent == 1, Reminder.created_at < cutoff
+        Reminder.is_sent == "sent", Reminder.created_at < cutoff
     ).delete()
     db.session.commit()
     return {"deleted": deleted}

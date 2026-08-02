@@ -2,6 +2,7 @@
 """Auth feature models: User and Role."""
 
 import random
+from secrets import compare_digest
 
 from datetime import datetime, timedelta, UTC
 
@@ -96,7 +97,7 @@ class User(BaseModel):
         expiry = self.otp_expiry
         if expiry is not None and expiry.tzinfo is None:
             expiry = expiry.replace(tzinfo=UTC)
-        return self.otp_code == code and expiry and expiry > datetime.now(UTC)
+        return compare_digest(self.otp_code or "", code or "") and expiry and expiry > datetime.now(UTC)
 
 
 class ResetToken(db.Model):

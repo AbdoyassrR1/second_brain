@@ -20,7 +20,7 @@ class ReminderRepository:
     @staticmethod
     def find_pending(limit=100):
         return (
-            Reminder.query.filter_by(is_sent=0)
+            Reminder.query.filter_by(is_sent="pending")
             .filter(Reminder.reminder_time <= datetime.now(UTC))
             .limit(limit)
             .all()
@@ -57,7 +57,7 @@ class ReminderRepository:
     def mark_sent(reminder_id):
         reminder = Reminder.query.filter_by(id=reminder_id).first()
         if reminder:
-            reminder.is_sent = 1
+            reminder.is_sent = "sent"
             db.session.commit()
         return reminder
 
@@ -65,6 +65,6 @@ class ReminderRepository:
     def mark_failed(reminder_id):
         reminder = Reminder.query.filter_by(id=reminder_id).first()
         if reminder:
-            reminder.is_sent = 2
+            reminder.is_sent = "failed"
             db.session.commit()
         return reminder

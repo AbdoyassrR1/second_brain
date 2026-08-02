@@ -2,7 +2,8 @@
 """Tasks schemas for validation and serialization."""
 
 from marshmallow import Schema, fields, validate
-from app.shared.fields import UTCDateTime
+from app.shared.schemas.fields import UTCDateTime
+from app.shared.schemas.query_schemas import PaginationQuerySchema
 
 
 class TaskCreateSchema(Schema):
@@ -89,3 +90,25 @@ class StatisticsResponseSchema(Schema):
     tasks_by_status = fields.Dict()
     tasks_by_priority = fields.Dict()
     completion_rate = fields.Float()
+
+
+class TaskListQuerySchema(PaginationQuerySchema):
+    """Schema for task list query parameters."""
+
+    status = fields.Str(
+        allow_none=True,
+        validate=validate.OneOf(["todo", "in_progress", "completed", "cancelled"]),
+    )
+    priority = fields.Str(
+        allow_none=True,
+        validate=validate.OneOf(["low", "medium", "high", "urgent"]),
+    )
+    project_id = fields.Str(allow_none=True)
+    parent_task_id = fields.Str(allow_none=True)
+    due = fields.Str(allow_none=True, validate=validate.OneOf(["today", "tomorrow", "upcoming"]))
+    overdue = fields.Bool(load_default=None, allow_none=True)
+    q = fields.Str(allow_none=True)
+    labels = fields.Str(allow_none=True)
+    include_archived = fields.Bool(load_default=False)
+    archived = fields.Bool(load_default=None, allow_none=True)
+    sort = fields.Str(allow_none=True)

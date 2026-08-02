@@ -302,16 +302,6 @@ class TokenBlocklistRepository:
         """Return True if the given jti has been revoked."""
         return TokenBlocklist.query.filter_by(jti=jti).first() is not None
 
-    @staticmethod
-    def revoke_user_tokens(user_id):
-        """Revoke all currently-unrevoked tokens for a user.
-
-        Note: this records outstanding access/refresh tokens already issued.
-        Truly revoking all future tokens additionally requires a token-version
-        bump; that is out of scope for the current blocklist design.
-        """
-        return TokenBlocklist.query.filter_by(user_id=user_id).all()
-
 
 class UserDeviceRepository:
     """Repository for login device/session tracking."""

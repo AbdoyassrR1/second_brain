@@ -2,7 +2,7 @@
 """Auth schemas for validation and serialization."""
 
 from marshmallow import Schema, fields, validate, validates_schema, ValidationError
-from app.shared.fields import UTCDateTime
+from app.shared.schemas.fields import UTCDateTime
 
 # Reusable strength validator: ≥8 chars, ≥1 lower, ≥1 upper, ≥1 digit.
 PASSWORD_STRENGTH = [

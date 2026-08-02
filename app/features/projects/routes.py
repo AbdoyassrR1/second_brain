@@ -5,6 +5,7 @@ from flask import Blueprint, jsonify, request, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.extensions import limiter
 from app.shared.decorators import require_json_body
+from app.shared.schemas.query_schemas import PaginationQuerySchema
 from .service import ProjectService
 from .schema import ProjectCreateSchema, ProjectUpdateSchema, ProjectResponseSchema
 
@@ -13,6 +14,7 @@ project_service = ProjectService()
 create_schema = ProjectCreateSchema()
 update_schema = ProjectUpdateSchema()
 response_schema = ProjectResponseSchema()
+pagination_schema = PaginationQuerySchema()
 
 
 @projects_bp.route("", methods=["POST"])
@@ -32,8 +34,9 @@ def create_project(json_data):
 def list_projects():
     """List projects for current user."""
     user_id = get_jwt_identity()
-    page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 20, type=int)
+    query_data = pagination_schema.load(request.args.to_dict())
+    page = query_data["page"]
+    per_page = query_data["per_page"]
 
     p = project_service.list_projects(user_id, page=page, per_page=per_page)
     return jsonify({

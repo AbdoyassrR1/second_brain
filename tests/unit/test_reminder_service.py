@@ -23,7 +23,7 @@ class TestReminderCreate:
         assert reminder is not None
         assert reminder.task_id == task.id
         assert reminder.user_id == verified_user.id
-        assert reminder.is_sent == 0
+        assert reminder.is_sent == "pending"
 
 
 class TestPendingReminders:
@@ -91,7 +91,7 @@ class TestMarkSent:
         reminder = service.create_reminder(task.id, verified_user.id, future)
 
         updated = service.mark_sent(reminder.id)
-        assert updated.is_sent == 1
+        assert updated.is_sent == "sent"
 
     def test_mark_sent_not_found(self, db, verified_user):
         """Test marking a non-existent reminder raises error."""

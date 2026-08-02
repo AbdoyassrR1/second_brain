@@ -107,6 +107,13 @@ class TestReminderList:
         response = client.get("/api/v1/reminders")
         assert response.status_code == 401
 
+    def test_list_reminders_invalid_status(self, client, db, auth_headers):
+        headers, _ = auth_headers
+        response = client.get("/api/v1/reminders?status=archived", headers=headers)
+        assert response.status_code == 400
+        data = response.get_json()
+        assert data["status"] == "error"
+
 
 class TestReminderGet:
     def test_get_reminder_success(self, client, db, auth_headers):

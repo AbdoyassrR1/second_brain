@@ -70,7 +70,7 @@ class TestSendReminder:
             task_id=task.id,
             user_id=user.id,
             reminder_time=datetime(2020, 1, 1),
-            is_sent=1,
+            is_sent="sent",
         )
         _db.session.add(reminder)
         _db.session.commit()

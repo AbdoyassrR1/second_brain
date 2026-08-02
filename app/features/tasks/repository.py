@@ -40,7 +40,7 @@ class TaskRepository:
         query = Task.query.filter_by(user_id=user_id, is_deleted=False)
 
         # Archive filter
-        if archived == "true":
+        if archived:
             query = query.filter_by(is_archived=True)
         elif not include_archived:
             query = query.filter_by(is_archived=False)
@@ -66,7 +66,7 @@ class TaskRepository:
         elif due == "upcoming":
             query = query.filter(Task.due_date >= today)
 
-        if overdue == "true":
+        if overdue:
             query = query.filter(
                 and_(
                     Task.due_date < today,
@@ -318,45 +318,39 @@ class TaskRepository:
         # Base query: non-deleted tasks
         base = Task.query.filter_by(user_id=user_id, is_deleted=False)
 
-        total_tasks = base.count()
-
-        active_tasks = base.filter(
-            Task.status.in_(["todo", "in_progress"])
-        ).count()
-
-        completed_tasks = base.filter_by(status="completed").count()
-
-        archived_tasks = base.filter_by(is_archived=True).count()
-
-        overdue_tasks = base.filter(
-            and_(
+        # Single aggregation query for all summary counts.
+        # NOTE: MySQL does not support `count() FILTER (WHERE ...)`, so use
+        # portable `count(case((cond, 1)))` — counts only rows where cond is true.
+        row = db.session.query(
+            func.count().label("total"),
+            func.count(case((Task.status.in_(["todo", "in_progress"]), 1))).label("active"),
+            func.count(case((Task.status == "completed", 1))).label("completed"),
+            func.count(case((Task.is_archived == True, 1))).label("archived"),
+            func.count(case((and_(
                 Task.due_date < today,
-                Task.status != "completed",
-                Task.status != "cancelled",
-            )
-        ).count()
-
-        due_today_tasks = base.filter(
-            and_(
+                Task.status.notin_(["completed", "cancelled"]),
+            ), 1))).label("overdue"),
+            func.count(case((and_(
                 Task.due_date == today,
-                Task.status != "completed",
-                Task.status != "cancelled",
-            )
-        ).count()
+                Task.status.notin_(["completed", "cancelled"]),
+            ), 1))).label("due_today"),
+        ).filter(
+            Task.user_id == user_id, Task.is_deleted == False
+        ).first()
 
-        # Tasks by status
-        status_counts = {}
-        for s in ["todo", "in_progress", "completed", "cancelled"]:
-            count = base.filter_by(status=s).count()
-            if count > 0:
-                status_counts[s] = count
+        total_tasks = row.total
+        active_tasks = row.active
+        completed_tasks = row.completed
+        archived_tasks = row.archived
+        overdue_tasks = row.overdue
+        due_today_tasks = row.due_today
 
-        # Tasks by priority
-        priority_counts = {}
-        for p in ["low", "medium", "high", "urgent"]:
-            count = base.filter_by(priority=p).count()
-            if count > 0:
-                priority_counts[p] = count
+        # GROUP BY for status and priority counts (2 queries instead of 8)
+        status_rows = base.with_entities(Task.status, func.count().label("cnt")).group_by(Task.status).all()
+        status_counts = {r.status: r.cnt for r in status_rows}
+
+        priority_rows = base.with_entities(Task.priority, func.count().label("cnt")).group_by(Task.priority).all()
+        priority_counts = {r.priority: r.cnt for r in priority_rows}
 
         # Completion rate
         completion_rate = 0.0

@@ -2,7 +2,7 @@
 """Labels schemas for validation and serialization."""
 
 from marshmallow import Schema, fields, validate
-from app.shared.fields import UTCDateTime
+from app.shared.schemas.fields import UTCDateTime
 
 
 class LabelCreateSchema(Schema):

@@ -9,7 +9,7 @@ from app.shared.exceptions import ValidationError
 from .service import TaskService
 from .schema import (
     TaskCreateSchema, TaskUpdateSchema, TaskResponseSchema,
-    BulkTaskActionSchema, StatisticsResponseSchema,
+    BulkTaskActionSchema, StatisticsResponseSchema, TaskListQuerySchema,
 )
 
 tasks_bp = Blueprint("tasks", __name__, url_prefix="/api/v1/tasks")
@@ -19,6 +19,7 @@ update_schema = TaskUpdateSchema()
 response_schema = TaskResponseSchema()
 bulk_action_schema = BulkTaskActionSchema()
 statistics_schema = StatisticsResponseSchema()
+list_query_schema = TaskListQuerySchema()
 
 
 @tasks_bp.route("", methods=["POST"])
@@ -38,19 +39,20 @@ def create_task(json_data):
 def list_tasks():
     """List tasks for current user with advanced filtering, sorting, and pagination."""
     user_id = get_jwt_identity()
-    status = request.args.get("status")
-    priority = request.args.get("priority")
-    project_id = request.args.get("project_id")
-    parent_task_id = request.args.get("parent_task_id")
-    due = request.args.get("due")
-    overdue = request.args.get("overdue")
-    q = request.args.get("q")
-    labels = request.args.get("labels")
-    include_archived = request.args.get("include_archived", "false").lower() == "true"
-    archived = request.args.get("archived")
-    sort = request.args.get("sort")
-    page = request.args.get("page", 1, type=int)
-    per_page = request.args.get("per_page", 20, type=int)
+    query_data = list_query_schema.load(request.args.to_dict())
+    status = query_data.get("status")
+    priority = query_data.get("priority")
+    project_id = query_data.get("project_id")
+    parent_task_id = query_data.get("parent_task_id")
+    due = query_data.get("due")
+    overdue = query_data.get("overdue")
+    q = query_data.get("q")
+    labels = query_data.get("labels")
+    include_archived = query_data.get("include_archived")
+    archived = query_data.get("archived")
+    sort = query_data.get("sort")
+    page = query_data["page"]
+    per_page = query_data["per_page"]
 
     p = task_service.list_tasks(
         user_id,
