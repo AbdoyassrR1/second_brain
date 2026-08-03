@@ -1,5 +1,6 @@
 from datetime import datetime, UTC
 from app.extensions import db
+from app.shared.database import database
 from .models import Reminder
 
 
@@ -29,8 +30,8 @@ class ReminderRepository:
     @staticmethod
     def create(task_id, user_id, reminder_time):
         reminder = Reminder(task_id=task_id, user_id=user_id, reminder_time=reminder_time)
-        db.session.add(reminder)
-        db.session.commit()
+        database.add(reminder)
+        database.commit()
         return reminder
 
     @staticmethod
@@ -41,7 +42,7 @@ class ReminderRepository:
         for key, value in kwargs.items():
             if value is not None and hasattr(reminder, key):
                 setattr(reminder, key, value)
-        db.session.commit()
+        database.commit()
         return reminder
 
     @staticmethod
@@ -49,8 +50,8 @@ class ReminderRepository:
         reminder = Reminder.query.filter_by(id=reminder_id).first()
         if not reminder:
             return None
-        db.session.delete(reminder)
-        db.session.commit()
+        database.delete(reminder)
+        database.commit()
         return reminder
 
     @staticmethod
@@ -58,7 +59,7 @@ class ReminderRepository:
         reminder = Reminder.query.filter_by(id=reminder_id).first()
         if reminder:
             reminder.is_sent = "sent"
-            db.session.commit()
+            database.commit()
         return reminder
 
     @staticmethod
@@ -66,5 +67,5 @@ class ReminderRepository:
         reminder = Reminder.query.filter_by(id=reminder_id).first()
         if reminder:
             reminder.is_sent = "failed"
-            db.session.commit()
+            database.commit()
         return reminder

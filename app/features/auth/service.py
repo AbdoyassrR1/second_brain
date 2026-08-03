@@ -31,7 +31,7 @@ from app.shared.logging.audit_log import (
     log_2fa_enabled,
     log_2fa_disabled,
 )
-from app.extensions import db
+from app.shared.database import database
 from .repository import (
     UserRepository,
     RoleRepository,
@@ -163,7 +163,7 @@ class AuthService:
         user.is_verified = True
         user.verified_at = datetime.now(UTC)
         verification_token.is_used = True
-        db.session.commit()
+        database.commit()
 
         return user
 
@@ -241,7 +241,7 @@ class AuthService:
         self.user_repo.reset_failed_attempts(user.id)
 
         user.last_login = datetime.now(UTC)
-        db.session.commit()
+        database.commit()
 
         # Record device
         self._capture_device(user.id)
@@ -252,7 +252,7 @@ class AuthService:
         # If 2FA is enabled, generate an OTP and return a pending token
         if user.two_factor_enabled:
             otp_code = user.generate_otp()
-            db.session.commit()
+            database.commit()
             self.mail_service.send_otp_email(user, otp_code)
             log_otp_sent(user.id, user.email)
             pending_token = create_access_token(
@@ -281,7 +281,7 @@ class AuthService:
 
         user.otp_code = None
         user.otp_expiry = None
-        db.session.commit()
+        database.commit()
         log_otp_verified(user.id, user.email)
         return user
 
@@ -298,7 +298,7 @@ class AuthService:
             raise ConflictError("Two-factor authentication is already enabled")
 
         user.two_factor_enabled = True
-        db.session.commit()
+        database.commit()
         self.revoke_all_tokens(user.id)
         log_2fa_enabled(user.id)
         return user
@@ -318,7 +318,7 @@ class AuthService:
         user.two_factor_enabled = False
         user.otp_code = None
         user.otp_expiry = None
-        db.session.commit()
+        database.commit()
         self.revoke_all_tokens(user.id)
         log_2fa_disabled(user.id)
         return user
@@ -400,7 +400,7 @@ class AuthService:
         # Unlock account and reset failed attempts so the user can log in.
         user.failed_attempts = 0
         user.locked_until = None
-        db.session.commit()
+        database.commit()
 
         self.mail_service.send_password_changed_notification(user)
         log_password_reset_completed(user.id)
@@ -432,7 +432,7 @@ class AuthService:
             raise ValidationError("New password must be different from current password")
 
         user.set_password(new_password)
-        db.session.commit()
+        database.commit()
 
         # Force re-login by revoking all tokens.
         self.revoke_all_tokens(user_id)
@@ -458,7 +458,7 @@ class AuthService:
             raise ConflictError("Email already exists")
 
         user.pending_email = new_email
-        db.session.commit()
+        database.commit()
 
         self._issue_verification_token(user, recipient_email=new_email)
         log_profile_update(user_id, {"pending_email": new_email})

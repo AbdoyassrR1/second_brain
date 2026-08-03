@@ -54,14 +54,14 @@ def dispatch_due_reminders():
 
 @celery_app.task
 def cleanup_old_reminders(days=30):
-    from app.extensions import db
     from app.features.reminders.models import Reminder
+    from app.shared.database import database
 
     cutoff = datetime.now(UTC) - timedelta(days=days)
     deleted = Reminder.query.filter(
         Reminder.is_sent == "sent", Reminder.created_at < cutoff
     ).delete()
-    db.session.commit()
+    database.commit()
     return {"deleted": deleted}
 
 

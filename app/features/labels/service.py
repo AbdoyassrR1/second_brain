@@ -4,6 +4,7 @@
 from app.shared.exceptions import NotFoundError, ForbiddenError
 from app.shared.logging.audit_log import log_label_create, log_label_delete, log_label_assigned, log_label_removed
 from app.shared.metrics import labels_created_total, labels_deleted_total
+from app.shared.database import database
 from .repository import LabelRepository
 from app.features.tasks.repository import TaskRepository
 
@@ -106,8 +107,7 @@ class LabelService:
 
         if label not in task.labels:
             task.labels.append(label)
-            from app.extensions import db
-            db.session.commit()
+            database.commit()
             log_label_assigned(user_id, task_id, label_id)
 
         return task
@@ -128,8 +128,7 @@ class LabelService:
 
         if label in task.labels:
             task.labels.remove(label)
-            from app.extensions import db
-            db.session.commit()
+            database.commit()
             log_label_removed(user_id, task_id, label_id)
 
         return task

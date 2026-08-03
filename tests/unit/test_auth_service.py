@@ -55,6 +55,42 @@ class TestAuthService:
         user = service.login(username=verified_user.username, password="Password123")
         assert user.username == verified_user.username
 
+    def test_login_survives_device_capture_failure(self, app, db, verified_user, monkeypatch):
+        """Login must succeed even if device capture fails, without poisoning the session.
+
+        Regression test: a failed commit during device upsert used to leave the
+        session in a broken (pending rollback) state, breaking the rest of the
+        request. The centralized ``database.commit()`` rolls back before re-raising,
+        so a swallowed failure must leave the session usable.
+        """
+        from datetime import datetime, UTC
+        from app.features.auth.models import User
+        from app.shared.database import database
+
+        def failing_upsert(user_id, device_name=None, user_agent=None, ip_address=None):
+            _db.session.add(
+                User(
+                    username="duplicate",
+                    email=verified_user.email,
+                    password="x",
+                    phone_number="0000000000",
+                )
+            )
+            database.commit()
+
+        service = AuthService()
+        monkeypatch.setattr(service.device_repo, "upsert", failing_upsert)
+
+        with app.test_request_context():
+            user = service.login(username=verified_user.username, password="Password123")
+
+        assert user.username == verified_user.username
+
+        verified_user.last_login = datetime.now(UTC)
+        database.commit()
+        _db.session.expire_all()
+        assert verified_user.last_login is not None
+
     def test_login_with_2fa_returns_pending_token(self, db, verified_user, monkeypatch):
         """Test login returns a 2FA pending token when enabled."""
         service = AuthService()

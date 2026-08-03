@@ -4,6 +4,7 @@
 from datetime import datetime, UTC
 from sqlalchemy import and_
 from app.extensions import db
+from app.shared.database import database
 from .models import User, Role, VerificationToken, ResetToken, TokenBlocklist, UserDevice
 
 
@@ -61,8 +62,8 @@ class UserRepository:
             role_id=role_id,
         )
         user.set_password(password)
-        db.session.add(user)
-        db.session.commit()
+        database.add(user)
+        database.commit()
         return user
 
     @staticmethod
@@ -74,7 +75,7 @@ class UserRepository:
                 if hasattr(user, key):
                     setattr(user, key, value)
             user.updated_at = datetime.now(UTC)
-            db.session.commit()
+            database.commit()
         return user
 
     @staticmethod
@@ -84,7 +85,7 @@ class UserRepository:
         if not user:
             return 0
         user.failed_attempts = (user.failed_attempts or 0) + 1
-        db.session.commit()
+        database.commit()
         return user.failed_attempts
 
     @staticmethod
@@ -93,7 +94,7 @@ class UserRepository:
         user = User.query.filter_by(id=user_id).first()
         if user:
             user.locked_until = locked_until
-            db.session.commit()
+            database.commit()
         return user
 
     @staticmethod
@@ -103,7 +104,7 @@ class UserRepository:
         if user:
             user.failed_attempts = 0
             user.locked_until = None
-            db.session.commit()
+            database.commit()
         return user
 
     @staticmethod
@@ -113,7 +114,7 @@ class UserRepository:
         if user:
             user.is_deleted = True
             user.deleted_at = datetime.now(UTC)
-            db.session.commit()
+            database.commit()
         return user
 
     @staticmethod
@@ -126,7 +127,7 @@ class UserRepository:
         if not user:
             return None
         user.token_version = (user.token_version or 0) + 1
-        db.session.commit()
+        database.commit()
         return user.token_version
 
 
@@ -147,8 +148,8 @@ class RoleRepository:
     def create(name, description):
         """Create and save a new role."""
         role = Role(name=name, description=description)
-        db.session.add(role)
-        db.session.commit()
+        database.add(role)
+        database.commit()
         return role
 
     @staticmethod
@@ -163,11 +164,11 @@ class RoleRepository:
         inserted = 0
         for name, description in roles.items():
             if not Role.query.filter_by(name=name).first():
-                db.session.add(Role(name=name, description=description))
+                database.add(Role(name=name, description=description))
                 inserted += 1
 
         if inserted:
-            db.session.commit()
+            database.commit()
 
         return inserted
 
@@ -184,8 +185,8 @@ class VerificationTokenRepository:
             expiry_date=expiry_date,
             is_used=False,
         )
-        db.session.add(verification_token)
-        db.session.commit()
+        database.add(verification_token)
+        database.commit()
         return verification_token
 
     @staticmethod
@@ -209,7 +210,7 @@ class VerificationTokenRepository:
         """Mark a verification token as used."""
         if token_record:
             token_record.is_used = True
-            db.session.commit()
+            database.commit()
         return token_record
 
     @staticmethod
@@ -219,7 +220,7 @@ class VerificationTokenRepository:
         for token in tokens:
             token.is_used = True
         if tokens:
-            db.session.commit()
+            database.commit()
         return tokens
 
 
@@ -239,8 +240,8 @@ class ResetTokenRepository:
             expiry_date=expiry_date,
             is_used=False,
         )
-        db.session.add(reset_token)
-        db.session.commit()
+        database.add(reset_token)
+        database.commit()
         return reset_token
 
     @staticmethod
@@ -264,7 +265,7 @@ class ResetTokenRepository:
         """Mark a reset token as used."""
         if token_record:
             token_record.is_used = True
-            db.session.commit()
+            database.commit()
         return token_record
 
     @staticmethod
@@ -274,7 +275,7 @@ class ResetTokenRepository:
         for token in tokens:
             token.is_used = True
         if tokens:
-            db.session.commit()
+            database.commit()
         return tokens
 
 
@@ -293,8 +294,8 @@ class TokenBlocklistRepository:
             user_id=user_id,
             expires_at=expires_at,
         )
-        db.session.add(entry)
-        db.session.commit()
+        database.add(entry)
+        database.commit()
         return entry
 
     @staticmethod
@@ -325,12 +326,12 @@ class UserDeviceRepository:
                 ip_address=ip_address,
                 last_seen=now,
             )
-            db.session.add(device)
+            database.add(device)
         else:
             device.user_agent = user_agent or device.user_agent
             device.ip_address = ip_address or device.ip_address
             device.last_seen = now
-        db.session.commit()
+        database.commit()
         return device
 
     @staticmethod
@@ -343,7 +344,7 @@ class UserDeviceRepository:
         """Delete a specific device record for a user."""
         device = UserDevice.query.filter_by(id=device_id, user_id=user_id).first()
         if device:
-            db.session.delete(device)
-            db.session.commit()
+            database.delete(device)
+            database.commit()
             return True
         return False

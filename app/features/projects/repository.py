@@ -2,6 +2,7 @@
 """Projects repository for database operations."""
 
 from app.extensions import db
+from app.shared.database import database
 from .models import Project
 
 
@@ -22,8 +23,8 @@ class ProjectRepository:
     def create(user_id, name, **kwargs):
         """Create and save a new project."""
         project = Project(user_id=user_id, name=name, **kwargs)
-        db.session.add(project)
-        db.session.commit()
+        database.add(project)
+        database.commit()
         return project
 
     @staticmethod
@@ -34,7 +35,7 @@ class ProjectRepository:
             for key, value in kwargs.items():
                 if hasattr(project, key) and key not in ["id", "user_id", "created_at"]:
                     setattr(project, key, value)
-            db.session.commit()
+            database.commit()
         return project
 
     @staticmethod
@@ -45,8 +46,8 @@ class ProjectRepository:
             # Unlink tasks from this project first
             from app.features.tasks.models import Task
             Task.query.filter_by(project_id=project_id).update({"project_id": None})
-            db.session.delete(project)
-            db.session.commit()
+            database.delete(project)
+            database.commit()
             return True
         return False
 

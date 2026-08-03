@@ -4,6 +4,7 @@
 from datetime import datetime, date, timedelta, UTC
 from sqlalchemy import or_, and_, func, case
 from app.extensions import db
+from app.shared.database import database
 from .models import Task, task_labels
 
 
@@ -132,8 +133,8 @@ class TaskRepository:
     def create(user_id, title, **kwargs):
         """Create and save a new task."""
         task = Task(user_id=user_id, title=title, **kwargs)
-        db.session.add(task)
-        db.session.commit()
+        database.add(task)
+        database.commit()
         return task
 
     @staticmethod
@@ -144,7 +145,7 @@ class TaskRepository:
             for key, value in kwargs.items():
                 if hasattr(task, key) and key not in ["id", "user_id", "created_at"]:
                     setattr(task, key, value)
-            db.session.commit()
+            database.commit()
         return task
 
     @staticmethod
@@ -154,7 +155,7 @@ class TaskRepository:
         if task:
             task.is_deleted = True
             task.deleted_at = datetime.now(UTC)
-            db.session.commit()
+            database.commit()
             return True
         return False
 
@@ -165,7 +166,7 @@ class TaskRepository:
         if task:
             task.is_deleted = False
             task.deleted_at = None
-            db.session.commit()
+            database.commit()
             return True
         return False
 
@@ -176,7 +177,7 @@ class TaskRepository:
         if task:
             task.is_archived = True
             task.archived_at = datetime.now(UTC)
-            db.session.commit()
+            database.commit()
             return True
         return False
 
@@ -187,7 +188,7 @@ class TaskRepository:
         if task:
             task.is_archived = False
             task.archived_at = None
-            db.session.commit()
+            database.commit()
             return True
         return False
 
@@ -196,8 +197,8 @@ class TaskRepository:
         """Permanently delete a task."""
         task = Task.query.filter_by(id=task_id).first()
         if task:
-            db.session.delete(task)
-            db.session.commit()
+            database.delete(task)
+            database.commit()
             return True
         return False
 
@@ -227,7 +228,7 @@ class TaskRepository:
                 for key, value in kwargs.items():
                     if hasattr(task, key) and key not in ["id", "user_id", "created_at"]:
                         setattr(task, key, value)
-            db.session.commit()
+            database.commit()
         return tasks
 
     @staticmethod
@@ -242,7 +243,7 @@ class TaskRepository:
         for task in tasks:
             task.is_deleted = True
             task.deleted_at = now
-        db.session.commit()
+        database.commit()
         return tasks
 
     @staticmethod
@@ -257,7 +258,7 @@ class TaskRepository:
         for task in tasks:
             task.is_archived = True
             task.archived_at = now
-        db.session.commit()
+        database.commit()
         return tasks
 
     @staticmethod
@@ -271,7 +272,7 @@ class TaskRepository:
         for task in tasks:
             task.is_deleted = False
             task.deleted_at = None
-        db.session.commit()
+        database.commit()
         return tasks
 
     @staticmethod
@@ -285,7 +286,7 @@ class TaskRepository:
         for task in tasks:
             task.is_archived = False
             task.archived_at = None
-        db.session.commit()
+        database.commit()
         return tasks
 
     @staticmethod
@@ -300,7 +301,7 @@ class TaskRepository:
         for task in tasks:
             task.status = "completed"
             task.completed_at = now
-        db.session.commit()
+        database.commit()
         return tasks
 
     @staticmethod
@@ -321,7 +322,7 @@ class TaskRepository:
         # Single aggregation query for all summary counts.
         # NOTE: MySQL does not support `count() FILTER (WHERE ...)`, so use
         # portable `count(case((cond, 1)))` — counts only rows where cond is true.
-        row = db.session.query(
+        row = database.session.query(
             func.count().label("total"),
             func.count(case((Task.status.in_(["todo", "in_progress"]), 1))).label("active"),
             func.count(case((Task.status == "completed", 1))).label("completed"),

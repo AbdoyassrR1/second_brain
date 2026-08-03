@@ -60,6 +60,10 @@ def create_app(config_name=None):
     # Initialize extensions
     db.init_app(app)
     migrate.init_app(app, db)
+
+    # Attach DB observability (query timing, slow-query logging)
+    from app.shared.database import register_db_events
+    register_db_events(app)
     limiter.init_app(app)
     bcrypt.init_app(app)
     mail.init_app(app)

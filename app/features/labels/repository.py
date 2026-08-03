@@ -2,6 +2,7 @@
 """Labels repository for database operations."""
 
 from app.extensions import db
+from app.shared.database import database
 from .models import Label
 
 
@@ -22,8 +23,8 @@ class LabelRepository:
     def create(user_id, name, **kwargs):
         """Create and save a new label."""
         label = Label(user_id=user_id, name=name, **kwargs)
-        db.session.add(label)
-        db.session.commit()
+        database.add(label)
+        database.commit()
         return label
 
     @staticmethod
@@ -31,8 +32,8 @@ class LabelRepository:
         """Delete a label."""
         label = Label.query.filter_by(id=label_id).first()
         if label:
-            db.session.delete(label)
-            db.session.commit()
+            database.delete(label)
+            database.commit()
             return True
         return False
 
