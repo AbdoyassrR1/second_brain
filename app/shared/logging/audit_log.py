@@ -287,3 +287,125 @@ def log_task_recovered(user_id, task_id):
         success=True,
         details={"task_id": task_id},
     )
+
+
+def log_timer_started(user_id, entry_id, task_ids):
+    """Log timer start."""
+    log_audit_event(
+        "TIMER_STARTED",
+        user_id=user_id,
+        success=True,
+        details={"time_entry_id": entry_id, "task_ids": list(task_ids)},
+    )
+
+
+def log_timer_stopped(user_id, entry_id, duration_seconds, allocations=None):
+    """Log timer stop."""
+    log_audit_event(
+        "TIMER_STOPPED",
+        user_id=user_id,
+        success=True,
+        details={
+            "time_entry_id": entry_id,
+            "duration_seconds": duration_seconds,
+            "allocations": allocations,
+        },
+    )
+
+
+def log_timer_auto_stopped(user_id, entry_id, duration_seconds, reason):
+    """Log timer auto-stop (long-running limit / account delete)."""
+    log_audit_event(
+        "TIMER_AUTO_STOPPED",
+        user_id=user_id,
+        success=True,
+        details={
+            "time_entry_id": entry_id,
+            "duration_seconds": duration_seconds,
+            "reason": reason,
+        },
+    )
+
+
+def log_timer_task_added(user_id, entry_id, added, skipped):
+    """Log tasks added to a running timer."""
+    log_audit_event(
+        "TIMER_TASK_ADDED",
+        user_id=user_id,
+        success=True,
+        details={
+            "time_entry_id": entry_id,
+            "added": list(added),
+            "skipped": list(skipped),
+        },
+    )
+
+
+def log_timer_task_removed(user_id, entry_id, task_id):
+    """Log task removed from a running timer."""
+    log_audit_event(
+        "TIMER_TASK_REMOVED",
+        user_id=user_id,
+        success=True,
+        details={"time_entry_id": entry_id, "task_id": task_id},
+    )
+
+
+def log_time_entry_created(user_id, entry_id, task_ids, duration_seconds, source):
+    """Log manual time entry creation."""
+    log_audit_event(
+        "TIME_ENTRY_CREATED",
+        user_id=user_id,
+        success=True,
+        details={
+            "time_entry_id": entry_id,
+            "task_ids": list(task_ids),
+            "duration_seconds": duration_seconds,
+            "source": source,
+        },
+    )
+
+
+def log_time_entry_updated(user_id, entry_id, changes):
+    """Log time entry update."""
+    log_audit_event(
+        "TIME_ENTRY_UPDATED",
+        user_id=user_id,
+        success=True,
+        details={"time_entry_id": entry_id, "changed_fields": list(changes)},
+    )
+
+
+def log_time_entry_deleted(user_id, entry_id):
+    """Log time entry deletion."""
+    log_audit_event(
+        "TIME_ENTRY_DELETED",
+        user_id=user_id,
+        success=True,
+        details={"time_entry_id": entry_id},
+    )
+
+
+def log_report_generated(user_id, group_by, from_dt, to_dt, tz):
+    """Log report generation."""
+    log_audit_event(
+        "REPORT_GENERATED",
+        user_id=user_id,
+        success=True,
+        details={
+            "group_by": group_by,
+            "from": from_dt.isoformat() if from_dt else None,
+            "to": to_dt.isoformat() if to_dt else None,
+            "tz": tz,
+        },
+    )
+
+
+def log_time_entry_guard_blocked(user_id, task_ids, time_entry_id):
+    """Log a tasks-feature mutation blocked by a running timer link."""
+    log_audit_event(
+        "TIME_ENTRY_GUARD_BLOCKED",
+        user_id=user_id,
+        success=False,
+        details={"task_ids": list(task_ids), "time_entry_id": time_entry_id},
+    )

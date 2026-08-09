@@ -45,6 +45,13 @@ class Config:
     RATELIMIT_STORAGE_URL = os.getenv("RATELIMIT_STORAGE_URL", "redis://localhost:6379/1")
     AUTH_RATE_LIMIT = os.getenv("AUTH_RATE_LIMIT", "5 per minute")
     TASK_RATE_LIMIT = os.getenv("TASK_RATE_LIMIT", "10 per minute")
+    TIME_RATE_LIMIT = os.getenv("TIME_RATE_LIMIT", "30 per minute")
+    TIME_READ_RATE_LIMIT = os.getenv("TIME_READ_RATE_LIMIT", "60 per minute")
+    REPORT_RATE_LIMIT = os.getenv("REPORT_RATE_LIMIT", "10 per minute")
+
+    # Time tracking
+    TIME_AUTO_STOP_HOURS = int(os.getenv("TIME_AUTO_STOP_HOURS", "24"))
+    TIME_REPORT_MAX_DAYS = int(os.getenv("TIME_REPORT_MAX_DAYS", "366"))
 
     # Redis
     REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
@@ -107,6 +114,9 @@ class TestingConfig(Config):
     RATELIMIT_STORAGE_URL = "memory://"
     AUTH_RATE_LIMIT = "1000 per minute"
     TASK_RATE_LIMIT = "1000 per minute"
+    TIME_RATE_LIMIT = "1000 per minute"
+    TIME_READ_RATE_LIMIT = "1000 per minute"
+    REPORT_RATE_LIMIT = "1000 per minute"
     MAX_FAILED_LOGIN_ATTEMPTS = 3
     ACCOUNT_LOCKOUT_MINUTES = 1
     PASSWORD_RESET_TOKEN_EXPIRES_MINUTES = 1

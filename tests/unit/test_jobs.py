@@ -79,3 +79,90 @@ class TestSendReminder:
         data = result.get(timeout=5)
         assert data["skipped"] == "Already sent"
         assert data["reminder_id"] == reminder.id
+
+
+class TestAutoStopLongRunningTimers:
+    def test_no_long_running_timers(self, app, db):
+        from app.jobs.tasks import auto_stop_long_running_timers
+        result = auto_stop_long_running_timers.delay()
+        assert result.get(timeout=5) == {"checked": 0, "auto_stopped": 0}
+
+    def test_stops_long_running_timers(self, app, db):
+        from datetime import datetime, timedelta, UTC
+        from app.features.tasks.models import Task
+        from app.features.time_tracking.models import TimeEntry, TimeEntryTask
+        from app.jobs.tasks import auto_stop_long_running_timers
+
+        role = RoleRepository.find_by_name("customer")
+        user = User(
+            username="timertest",
+            email="timer@test.com",
+            phone_number="7777777777",
+            role_id=role.id,
+            is_verified=True,
+        )
+        user.set_password("Password123")
+        _db.session.add(user)
+        _db.session.commit()
+
+        task = Task(title="Timer Task", user_id=user.id)
+        _db.session.add(task)
+        _db.session.commit()
+
+        entry = TimeEntry(
+            user_id=user.id,
+            started_at=datetime.now(UTC) - timedelta(hours=30),
+            running=True,
+        )
+        _db.session.add(entry)
+        _db.session.commit()
+        _db.session.add(
+            TimeEntryTask(
+                time_entry_id=entry.id,
+                task_id=task.id,
+                task_title=task.title,
+                position=0,
+            )
+        )
+        _db.session.commit()
+
+        result = auto_stop_long_running_timers.delay()
+        assert result.get(timeout=5)["auto_stopped"] == 1
+
+        refreshed = TimeEntry.query.get(entry.id)
+        assert refreshed.running is False
+        assert refreshed.duration_seconds == 30 * 3600
+
+    def test_recent_timer_not_stopped(self, app, db):
+        from datetime import datetime, timedelta, UTC
+        from app.features.tasks.models import Task
+        from app.features.time_tracking.models import TimeEntry
+        from app.jobs.tasks import auto_stop_long_running_timers
+
+        role = RoleRepository.find_by_name("customer")
+        user = User(
+            username="timertest2",
+            email="timer2@test.com",
+            phone_number="6666666666",
+            role_id=role.id,
+            is_verified=True,
+        )
+        user.set_password("Password123")
+        _db.session.add(user)
+        _db.session.commit()
+
+        task = Task(title="Timer Task", user_id=user.id)
+        _db.session.add(task)
+        _db.session.commit()
+
+        entry = TimeEntry(
+            user_id=user.id,
+            started_at=datetime.now(UTC) - timedelta(hours=1),
+            running=True,
+        )
+        _db.session.add(entry)
+        _db.session.commit()
+
+        result = auto_stop_long_running_timers.delay()
+        assert result.get(timeout=5) == {"checked": 0, "auto_stopped": 0}
+        assert TimeEntry.query.get(entry.id).running is True

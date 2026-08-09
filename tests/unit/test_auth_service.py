@@ -396,3 +396,21 @@ class TestAccountDeletion:
 
         with pytest.raises(UnauthorizedError):
             service.login(username=verified_user.username, password="Password123")
+
+    def test_delete_account_stops_running_timer(self, db, verified_user):
+        """Deleting an account stops any running timer first."""
+        from app.features.tasks.service import TaskService
+        from app.features.time_tracking.service import TimeTrackingService
+        from app.features.time_tracking.models import TimeEntry
+
+        task = TaskService().create_task(user_id=verified_user.id, title="Timed")
+        timer = TimeTrackingService().start_timer(verified_user.id, [task.id])
+        assert timer.running is True
+
+        service = AuthService()
+        service.delete_account(verified_user.id)
+
+        stopped = TimeEntry.query.get(timer.id)
+        assert stopped.running is False
+        assert stopped.ended_at is not None
+        assert stopped.duration_seconds is not None

@@ -24,6 +24,10 @@ celery_app.conf.beat_schedule = {
         "task": "app.jobs.tasks.daily_summary",
         "schedule": crontab(hour=8, minute=0),
     },
+    "auto-stop-long-running-timers": {
+        "task": "app.jobs.tasks.auto_stop_long_running_timers",
+        "schedule": crontab(minute=5),
+    },
 }
 
 

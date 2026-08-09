@@ -92,6 +92,38 @@ reminders_created_total = Counter(
     "Total reminders created",
 )
 
+# Time tracking metrics
+timers_started_total = Counter(
+    "timers_started_total",
+    "Total timers started",
+)
+
+timers_stopped_total = Counter(
+    "timers_stopped_total",
+    "Total timers stopped",
+)
+
+timers_auto_stopped_total = Counter(
+    "timers_auto_stopped_total",
+    "Total timers auto-stopped (long-running limit)",
+)
+
+time_entries_created_total = Counter(
+    "time_entries_created_total",
+    "Total time entries created",
+    ["source"],  # timer, manual
+)
+
+time_entries_deleted_total = Counter(
+    "time_entries_deleted_total",
+    "Total time entries deleted",
+)
+
+time_reports_total = Counter(
+    "time_reports_total",
+    "Total time reports generated",
+)
+
 # ==================== DATABASE METRICS ====================
 
 database_query_duration_seconds = Histogram(

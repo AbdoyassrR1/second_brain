@@ -27,7 +27,12 @@ def register_error_handlers(app):
 
         if isinstance(error, AppError):
             error_code = getattr(error, "error_code", error.__class__.__name__.upper())
-            return _error_response(error.message, error_code, error.status_code)
+            return _error_response(
+                error.message,
+                error_code,
+                error.status_code,
+                errors=getattr(error, "errors", None),
+            )
 
         # Truly unexpected exception — log with traceback and return 500.
         request_id = g.get("request_id", "unknown")

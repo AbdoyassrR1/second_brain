@@ -17,6 +17,17 @@ class TaskRepository:
         return Task.query.filter_by(id=task_id).first()
 
     @staticmethod
+    def find_by_ids(task_ids):
+        """Find tasks by IDs (including soft-deleted/archived/foreign).
+
+        Used by the time-tracking validation so the caller can classify each
+        id as not_found / foreign / soft_deleted / archived.
+        """
+        if not task_ids:
+            return []
+        return Task.query.filter(Task.id.in_(task_ids)).all()
+
+    @staticmethod
     def find_active_by_id(task_id):
         """Find task by ID, excluding soft-deleted."""
         return Task.query.filter_by(id=task_id, is_deleted=False).first()

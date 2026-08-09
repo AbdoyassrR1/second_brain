@@ -328,3 +328,72 @@ class TestStatusTransitions:
             _validate_status_transition("completed", "in_progress")
         with pytest.raises(ValidationError):
             _validate_status_transition("cancelled", "completed")
+
+
+class TestTimeTrackingGuard:
+    """Test the running-timer guard on delete/archive operations."""
+
+    def _start_timer(self, user_id, task_ids):
+        from app.features.time_tracking.service import TimeTrackingService
+        TimeTrackingService().start_timer(user_id, task_ids)
+
+    def test_delete_task_with_running_timer_blocked(self, db, verified_user):
+        from app.features.time_tracking.exceptions import TaskInRunningTimerError
+
+        service = TaskService()
+        task = service.create_task(user_id=verified_user.id, title="Timed")
+        self._start_timer(verified_user.id, [task.id])
+
+        with pytest.raises(TaskInRunningTimerError):
+            service.delete_task(task.id, verified_user.id)
+
+        from app.features.tasks.models import Task
+        assert Task.query.get(task.id).is_deleted is False
+
+    def test_archive_task_with_running_timer_blocked(self, db, verified_user):
+        from app.features.time_tracking.exceptions import TaskInRunningTimerError
+
+        service = TaskService()
+        task = service.create_task(user_id=verified_user.id, title="Timed")
+        self._start_timer(verified_user.id, [task.id])
+
+        with pytest.raises(TaskInRunningTimerError):
+            service.archive_task(task.id, verified_user.id)
+
+        from app.features.tasks.models import Task
+        assert Task.query.get(task.id).is_archived is False
+
+    def test_delete_task_after_timer_stopped_allowed(self, db, verified_user):
+        from app.features.time_tracking.service import TimeTrackingService
+
+        service = TaskService()
+        task = service.create_task(user_id=verified_user.id, title="Timed")
+        tt = TimeTrackingService()
+        tt.start_timer(verified_user.id, [task.id])
+        tt.stop_timer(verified_user.id)
+
+        service.delete_task(task.id, verified_user.id)
+
+        from app.features.tasks.models import Task
+        assert Task.query.get(task.id).is_deleted is True
+
+    def test_bulk_delete_with_running_timer_blocked(self, db, verified_user):
+        from app.features.time_tracking.exceptions import TaskInRunningTimerError
+
+        service = TaskService()
+        t1 = service.create_task(user_id=verified_user.id, title="One")
+        t2 = service.create_task(user_id=verified_user.id, title="Two")
+        self._start_timer(verified_user.id, [t1.id])
+
+        with pytest.raises(TaskInRunningTimerError):
+            service.bulk_soft_delete([t1.id, t2.id], verified_user.id)
+
+    def test_bulk_archive_with_running_timer_blocked(self, db, verified_user):
+        from app.features.time_tracking.exceptions import TaskInRunningTimerError
+
+        service = TaskService()
+        task = service.create_task(user_id=verified_user.id, title="Timed")
+        self._start_timer(verified_user.id, [task.id])
+
+        with pytest.raises(TaskInRunningTimerError):
+            service.bulk_archive([task.id], verified_user.id)

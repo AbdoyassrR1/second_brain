@@ -88,3 +88,26 @@ def daily_summary():
         )
         sent += 1
     return {"summary_sent": sent}
+
+
+@celery_app.task
+def auto_stop_long_running_timers():
+    """Complete timers running longer than TIME_AUTO_STOP_HOURS (default 24h).
+
+    Idempotent: the conditional stop update makes double-runs safe. The cutoff
+    is measured from ``started_at``, so a timer kept alive by the sweep keeps
+    accruing until it crosses the threshold.
+    """
+    from flask import current_app
+    from app.features.time_tracking.repository import TimeEntryRepository
+    from app.features.time_tracking.service import TimeTrackingService
+
+    hours = current_app.config.get("TIME_AUTO_STOP_HOURS", 24)
+    cutoff = datetime.now(UTC) - timedelta(hours=hours)
+    entries = TimeEntryRepository.find_long_running(cutoff, limit=200)
+    service = TimeTrackingService()
+    stopped = 0
+    for entry in entries:
+        if service.stop_long_running_entry(entry.id, reason="24h_limit"):
+            stopped += 1
+    return {"checked": len(entries), "auto_stopped": stopped}

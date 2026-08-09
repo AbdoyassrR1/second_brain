@@ -163,7 +163,10 @@ def create_app(config_name=None):
 
 def register_blueprints(app):
     """Register all feature blueprints."""
-    from app.features import auth_bp, me_bp, tasks_bp, reminders_bp, health_bp, projects_bp, labels_bp
+    from app.features import (
+        auth_bp, me_bp, tasks_bp, reminders_bp, health_bp, projects_bp,
+        labels_bp, time_tracking_bp,
+    )
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(me_bp)
@@ -172,3 +175,4 @@ def register_blueprints(app):
     app.register_blueprint(health_bp)
     app.register_blueprint(projects_bp)
     app.register_blueprint(labels_bp)
+    app.register_blueprint(time_tracking_bp)

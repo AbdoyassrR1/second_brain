@@ -543,6 +543,11 @@ class AuthService:
         if not user:
             raise NotFoundError("User not found")
 
+        # Stop any running timer before the account disappears so its data
+        # stays consistent for any retained time-entry reports.
+        from app.features.time_tracking.service import TimeTrackingService
+        TimeTrackingService().auto_stop_for_user(user_id, reason="account_deleted")
+
         self.user_repo.soft_delete(user_id)
         self.revoke_all_tokens(user_id)
         log_account_deleted(user_id)

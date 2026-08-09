@@ -80,6 +80,25 @@ class TaskService:
             raise ForbiddenError("You do not have permission to access this task")
         return task
 
+    def _guard_no_running_timer(self, task_ids, user_id):
+        """Raise 409 if any task is currently linked to a running timer.
+
+        Deleting or archiving a task that is being timed would corrupt the
+        running timer's task links, so the operation is blocked until the
+        timer is stopped or the task is removed from it.
+        """
+        from app.features.time_tracking.service import TimeTrackingService
+        from app.features.time_tracking.exceptions import TaskInRunningTimerError
+        from app.shared.logging.audit_log import log_time_entry_guard_blocked
+
+        offenders = TimeTrackingService().tasks_in_running_timer(task_ids, user_id)
+        if not offenders:
+            return
+        offending_ids = [o["task_id"] for o in offenders]
+        first = offenders[0]
+        log_time_entry_guard_blocked(user_id, offending_ids, first["time_entry_id"])
+        raise TaskInRunningTimerError(offending_ids, first["time_entry_id"])
+
     # ── Create ──────────────────────────────────────────────────────────
 
     def create_task(self, user_id, title, **kwargs):
@@ -210,6 +229,7 @@ class TaskService:
             ForbiddenError: If user doesn't own the task
         """
         self._guard_active_ownership(task_id, user_id)
+        self._guard_no_running_timer([task_id], user_id)
         self.repository.soft_delete(task_id)
         log_task_soft_deleted(user_id, task_id)
         tasks_deleted_total.inc()
@@ -272,6 +292,7 @@ class TaskService:
             Updated Task object
         """
         self._guard_active_ownership(task_id, user_id)
+        self._guard_no_running_timer([task_id], user_id)
         self.repository.archive(task_id)
         log_task_archived(user_id, task_id)
         return self.repository.find_by_id(task_id)
@@ -316,6 +337,7 @@ class TaskService:
 
     def bulk_archive(self, task_ids, user_id):
         """Bulk archive tasks."""
+        self._guard_no_running_timer(task_ids, user_id)
         return self.repository.bulk_archive(task_ids, user_id)
 
     def bulk_restore_archive(self, task_ids, user_id):
@@ -324,6 +346,7 @@ class TaskService:
 
     def bulk_soft_delete(self, task_ids, user_id):
         """Bulk soft delete tasks."""
+        self._guard_no_running_timer(task_ids, user_id)
         return self.repository.bulk_soft_delete(task_ids, user_id)
 
     def bulk_restore(self, task_ids, user_id):
