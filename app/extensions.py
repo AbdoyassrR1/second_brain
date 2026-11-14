@@ -2,6 +2,7 @@
 """Flask extensions initialized here for use elsewhere."""
 
 import os
+from flask import current_app
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_limiter import Limiter
@@ -27,7 +28,10 @@ db = SQLAlchemy()
 migrate = Migrate()
 limiter = Limiter(
     key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"],
+    default_limits=[
+        lambda: current_app.config.get("RATELIMIT_DEFAULT_DAY", "2000 per day"),
+        lambda: current_app.config.get("RATELIMIT_DEFAULT_HOUR", "300 per hour"),
+    ],
     storage_uri=os.getenv("RATELIMIT_STORAGE_URL", "redis://localhost:6379/1"),
     in_memory_fallback_enabled=True,
     enabled=_limiter_is_enabled,

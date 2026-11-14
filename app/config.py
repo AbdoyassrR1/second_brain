@@ -43,6 +43,8 @@ class Config:
 
     # Rate limiting
     RATELIMIT_STORAGE_URL = os.getenv("RATELIMIT_STORAGE_URL", "redis://localhost:6379/1")
+    RATELIMIT_DEFAULT_DAY = os.getenv("RATELIMIT_DEFAULT_DAY", "2000 per day")
+    RATELIMIT_DEFAULT_HOUR = os.getenv("RATELIMIT_DEFAULT_HOUR", "300 per hour")
     AUTH_RATE_LIMIT = os.getenv("AUTH_RATE_LIMIT", "5 per minute")
     TASK_RATE_LIMIT = os.getenv("TASK_RATE_LIMIT", "10 per minute")
     TIME_RATE_LIMIT = os.getenv("TIME_RATE_LIMIT", "30 per minute")
